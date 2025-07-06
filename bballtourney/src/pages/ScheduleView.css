@@ -1,0 +1,42 @@
+/* src/pages/ScheduleView.css */
+
+.error-card {
+    background-color: #ffcdd2;
+    border: 1px solid #d32f2f;
+    color: #d32f2f;
+}
+
+.error-card h2 {
+    color: #c62828;
+}
+
+.day-schedule {
+    margin-bottom: 2rem;
+}
+
+.schedule-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+
+.schedule-table th,
+.schedule-table td {
+    border: 1px solid #ddd;
+    padding: 12px;
+    text-align: left;
+}
+
+.schedule-table th {
+    background-color: #e3f2fd;
+    font-weight: bold;
+    color: #0d47a1;
+}
+
+.schedule-table tbody tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+.schedule-table tbody tr:hover {
+    background-color: #f1f1f1;
+}
