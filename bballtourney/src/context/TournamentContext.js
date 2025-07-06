@@ -1,132 +1,126 @@
 // src/context/TournamentContext.js
-import React, { createContext, useReducer, useContext } from 'react';
+import React, { createContext, useReducer, useContext, useEffect } from 'react';
 import { generateFullSchedule } from '../utils/scheduleGenerator.js';
 
-// 1. Define the initial state (NO CHANGES HERE)
-const initialState = {
-    settings: {
-        courts: 3,
-        days: 2,
-        gameDuration: 60,
-        startTime: '09:00',
-        endTime: '19:00',
+const LOCAL_STORAGE_KEY = 'basketballTournamentState';
+
+// --- NEW: Your complex tournament setup is now the default ---
+const defaultInitialState = {
+    "settings": {
+        "courts": 3,
+        "days": 2,
+        "gameDuration": 60,
+        "minBreak": 60,
+        "maxBreak": 240,
+        "dayTimes": [
+            { "day": 1, "startTime": "08:00", "endTime": "20:00" },
+            { "day": 2, "startTime": "09:00", "endTime": "20:00" }
+        ]
     },
-    divisions: [],
-    schedule: null,
+    "divisions": [
+        { "id": 1751796598272, "name": "men white group 1", "numTeams": 3, "gameType": "Pool Play", "teamNames": ["", "", ""] },
+        { "id": 1751796611552, "name": "men white group 2", "numTeams": 3, "gameType": "Pool Play", "teamNames": ["", "", ""] },
+        { "id": 1751796617040, "name": "men grey group 1", "numTeams": 4, "gameType": "Pool Play", "teamNames": ["", "", "", ""] },
+        { "id": 1751796631594, "name": "men grey group 2", "numTeams": 4, "gameType": "Pool Play", "teamNames": ["", "", "", ""] },
+        { "id": 1751796635458, "name": "men 40+ group 1", "numTeams": 4, "gameType": "Pool Play", "teamNames": ["", "", "", ""] },
+        { "id": 1751796645817, "name": "men 40+ group 2", "numTeams": 4, "gameType": "Pool Play", "teamNames": ["", "", "", ""] },
+        { "id": 1751796650457, "name": "men 50+ group 1", "numTeams": 3, "gameType": "Pool Play", "teamNames": ["", "", ""] },
+        { "id": 1751796655718, "name": "men 50+ group 2", "numTeams": 3, "gameType": "Pool Play", "teamNames": ["", "", ""] },
+        { "id": 1751796659626, "name": "men 50+ group 3", "numTeams": 4, "gameType": "Pool Play", "teamNames": ["", "", "", ""] },
+        { "id": 1751796667299, "name": "women group 1", "numTeams": 4, "gameType": "Pool Play", "teamNames": ["", "", "", ""] },
+        { "id": 1751796671927, "name": "women group 2", "numTeams": 4, "gameType": "Pool Play", "teamNames": ["", "", "", ""] },
+        { "id": 1751796674978, "name": "women group 3", "numTeams": 4, "gameType": "Pool Play", "teamNames": ["", "", "", ""] }
+    ],
+    "schedule": null
 };
 
-// 2. Create the reducer function to handle actions
+const initializer = (initialValue = defaultInitialState) => {
+    try {
+        const storedState = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (storedState) {
+            const parsedState = JSON.parse(storedState);
+            return { ...parsedState, schedule: null };
+        }
+    } catch (error) { console.error("Failed to parse state from localStorage", error); }
+    return initialValue;
+};
+
 const tournamentReducer = (state, action) => {
     switch (action.type) {
-        case 'UPDATE_SETTINGS':
-            return {
-                ...state,
-                settings: { ...state.settings, ...action.payload },
-            };
-        case 'ADD_DIVISION':
+        case 'UPDATE_SETTINGS': {
+            const newSettings = { ...state.settings, ...action.payload };
+            if (action.payload.days !== undefined) {
+                const newNumDays = parseInt(action.payload.days) || 1;
+                const currentDayTimes = newSettings.dayTimes || [];
+                const newDayTimes = [];
+                for (let i = 0; i < newNumDays; i++) {
+                    if (currentDayTimes[i]) {
+                        newDayTimes.push({ ...currentDayTimes[i], day: i + 1 });
+                    } else {
+                        const previousDay = newDayTimes[i-1] || { startTime: '09:00', endTime: '19:00' };
+                        newDayTimes.push({ day: i + 1, startTime: previousDay.startTime, endTime: previousDay.endTime });
+                    }
+                }
+                newSettings.dayTimes = newDayTimes;
+            }
+            return { ...state, settings: newSettings };
+        }
+        case 'ADD_DIVISION': {
             const newDivision = {
                 id: new Date().getTime(),
                 name: '',
-                type: 'round-robin',
-                // CHANGED: Instead of numTeams, we have a subDivisions array.
-                // We'll start it with one default sub-division.
-                subDivisions: [{ id: new Date().getTime() + 1, name: 'Pool A', numTeams: 4 }],
+                numTeams: 4,
+                gameType: 'Pool Play',
+                teamNames: Array(4).fill(''),
             };
-            return {
-                ...state,
-                divisions: [...state.divisions, newDivision],
-            };
-        case 'UPDATE_DIVISION':
-            return {
-                ...state,
-                divisions: state.divisions.map((div) =>
-                    div.id === action.payload.id ? { ...div, ...action.payload.data } : div
-                ),
-            };
-        case 'REMOVE_DIVISION':
-            return {
-                ...state,
-                divisions: state.divisions.filter((div) => div.id !== action.payload.id),
-            };
-
-        // --- NEW ACTIONS FOR SUB-DIVISIONS ---
-        case 'ADD_SUB_DIVISION': {
-            const { divisionId } = action.payload;
-            return {
-                ...state,
-                divisions: state.divisions.map(div => {
-                    if (div.id === divisionId) {
-                        const newSubDivision = {
-                            id: new Date().getTime(),
-                            name: `Pool ${String.fromCharCode(65 + div.subDivisions.length)}`, // Creates Pool B, C, etc.
-                            numTeams: 4,
-                        };
-                        return { ...div, subDivisions: [...div.subDivisions, newSubDivision] };
-                    }
-                    return div;
-                }),
-            };
+            return { ...state, divisions: [...state.divisions, newDivision] };
         }
-        case 'REMOVE_SUB_DIVISION': {
-            const { divisionId, subDivisionId } = action.payload;
-            return {
-                ...state,
-                divisions: state.divisions.map(div => {
-                    if (div.id === divisionId) {
-                        return { ...div, subDivisions: div.subDivisions.filter(sub => sub.id !== subDivisionId) };
-                    }
-                    return div;
-                }),
-            };
-        }
-        case 'UPDATE_SUB_DIVISION': {
-            const { divisionId, subDivisionId, data } = action.payload;
-            return {
-                ...state,
-                divisions: state.divisions.map(div => {
-                    if (div.id === divisionId) {
-                        const updatedSubDivisions = div.subDivisions.map(sub => {
-                            if (sub.id === subDivisionId) {
-                                return { ...sub, ...data };
+        case 'UPDATE_DIVISION': {
+            return { ...state, divisions: state.divisions.map((div) => {
+                    if (div.id === action.payload.id) {
+                        const updatedDivision = { ...div, ...action.payload.data };
+                        if (action.payload.data.numTeams !== undefined) {
+                            const newNumTeams = parseInt(action.payload.data.numTeams) || 0;
+                            const oldTeamNames = updatedDivision.teamNames || [];
+                            const newTeamNames = Array(newNumTeams).fill('');
+                            for (let i = 0; i < Math.min(newNumTeams, oldTeamNames.length); i++) {
+                                newTeamNames[i] = oldTeamNames[i];
                             }
-                            return sub;
-                        });
-                        return { ...div, subDivisions: updatedSubDivisions };
+                            updatedDivision.teamNames = newTeamNames;
+                        }
+                        return updatedDivision;
                     }
                     return div;
-                }),
-            };
+                }) };
         }
-        // --- NEW ACTIONS ---
+        case 'REMOVE_DIVISION': {
+            return { ...state, divisions: state.divisions.filter((div) => div.id !== action.payload.id) };
+        }
         case 'GENERATE_SCHEDULE': {
             try {
                 const schedule = generateFullSchedule(state);
                 return { ...state, schedule };
             } catch (e) {
                 console.error("Error generating schedule:", e);
-                return { ...state, schedule: { error: "A critical error occurred during schedule generation.", games: [] } };
+                return { ...state, schedule: { error: "A critical error occurred.", games: [] } };
             }
         }
-        case 'CLEAR_SCHEDULE': {
-            return { ...state, schedule: null };
-        }
-        // We will add a 'GENERATE_SCHEDULE' action later
-        default:
-            return state;
+        case 'CLEAR_SCHEDULE': return { ...state, schedule: null };
+        default: return state;
     }
 };
 
-// 3, 4, 5: No changes needed for Context, Provider, or custom hook
 const TournamentContext = createContext();
 
 export const TournamentProvider = ({ children }) => {
-    const [state, dispatch] = useReducer(tournamentReducer, initialState);
-
-    return (
-        <TournamentContext.Provider value={{ state, dispatch }}>
-            {children}
-        </TournamentContext.Provider>
-    );
+    const [state, dispatch] = useReducer(tournamentReducer, defaultInitialState, initializer);
+    useEffect(() => {
+        try {
+            const stateToSave = { ...state, schedule: null };
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(stateToSave));
+        } catch (error) { console.error("Failed to save state to localStorage", error); }
+    }, [state]);
+    return ( <TournamentContext.Provider value={{ state, dispatch }}> {children} </TournamentContext.Provider> );
 };
 
 export const useTournament = () => {
