@@ -40,3 +40,14 @@
 .schedule-table tbody tr:hover {
     background-color: #f1f1f1;
 }
+
+.phase-block {
+    margin-bottom: 2rem;
+}
+
+.phase-block h4 {
+    background-color: #f1f1f1;
+    padding: 8px;
+    border-radius: 4px;
+    border-left: 4px solid #1976d2;
+}
