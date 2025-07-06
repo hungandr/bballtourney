@@ -1,5 +1,6 @@
 // src/context/TournamentContext.js
 import React, { createContext, useReducer, useContext } from 'react';
+import { generateFullSchedule } from '../utils/scheduleGenerator.js';
 
 // 1. Define the initial state (NO CHANGES HERE)
 const initialState = {
