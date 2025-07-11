@@ -1,13 +1,170 @@
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+  sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: #f4f7f6;
+  color: #333;
 }
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+  monospace;
+}
+
+/* Main content container */
+.page-card {
+  background-color: white;
+  max-width: 900px;
+  margin: 2rem auto;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Form Styles */
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: #555;
+}
+
+.form-group input[type="text"],
+.form-group input[type="number"],
+.form-group input[type="time"] {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+  font-size: 1rem;
+}
+
+/* Button Styles */
+button {
+  background-color: #1976d2;
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+button:hover {
+  background-color: #1565c0;
+}
+
+button:disabled {
+  background-color: #9e9e9e;
+  cursor: not-allowed;
+}
+
+.button-secondary {
+  background-color: #6c757d;
+}
+
+.button-secondary:hover {
+  background-color: #5a6268;
+}
+
+/* --- RESPONSIVE STYLES --- */
+
+/*
+ * ===================================================
+ * GENERAL RESPONSIVENESS
+ * ===================================================
+ */
+
+/* Allow the main card to shrink on smaller screens */
+.page-card {
+  width: 95%;
+  padding: 1rem;
+}
+
+/* This is the class for two-column form layouts */
+.form-grid-2-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+/* Make form layouts stack vertically on smaller screens */
+@media (max-width: 768px) {
+  /* This targets any grid layout that should be single-column on mobile */
+  .form-grid-2-col {
+    grid-template-columns: 1fr;
+  }
+
+  /* Stack the header elements for better readability */
+  .view-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+}
+
+/*
+ * ===================================================
+ * RESPONSIVE TABLES
+ * This transforms the standard table into a "card" view on mobile.
+ * ===================================================
+ */
+@media (max-width: 768px) {
+  .schedule-table {
+    border: none;
+  }
+
+  /* Hide the desktop table headers */
+  .schedule-table thead {
+    display: none;
+  }
+
+  /* Make each row a distinct block (card) */
+  .schedule-table tr {
+    display: block;
+    border: 1px solid #ddd;
+    margin-bottom: 1rem;
+    border-radius: 8px;
+    padding: 1rem;
+  }
+
+  .schedule-table td {
+    display: block;
+    text-align: right; /* Align the data to the right */
+    border: none;
+    border-bottom: 1px dotted #ccc;
+    padding: 10px 0; /* Adjust padding for vertical layout */
+  }
+
+  .schedule-table td:last-child {
+    border-bottom: none;
+  }
+
+  /* Use the data-label attribute to create a label on the left */
+  .schedule-table td::before {
+    content: attr(data-label);
+    float: left;
+    font-weight: bold;
+    text-align: left;
+  }
+
+  /* Special styling for our empty/available slots */
+  .schedule-table td.empty-slot-text {
+    text-align: center; /* Center the "-- Available --" text */
+    padding: 1rem 0;
+  }
+
+  .schedule-table td.empty-slot-text::before {
+    display: none; /* Hide the pseudo-label for empty slots */
+  }
 }

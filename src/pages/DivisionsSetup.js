@@ -36,14 +36,11 @@ const DivisionsSetup = () => {
 
     const handleGenerateAndSaveSchedule = () => {
         setIsSaving(true);
-        // Step 1: Generate the schedule in memory first. The useEffect below will handle the rest.
         dispatch({ type: 'GENERATE_SCHEDULE' });
     };
 
-    // This effect runs after the state is updated by the dispatch above
     useEffect(() => {
         const saveSchedule = async () => {
-            // Step 2: Check if schedule generation was successful (not null and no error)
             if (state.schedule && !state.schedule.error) {
                 try {
                     const response = await fetch(`${API_URL}/api/tournaments`, {
@@ -62,8 +59,6 @@ const DivisionsSetup = () => {
                     }
 
                     const savedTournament = await response.json();
-
-                    // Step 3: Navigate to the new, unique, shareable URL
                     navigate(`/schedule/${savedTournament._id}`);
 
                 } catch (error) {
@@ -72,34 +67,31 @@ const DivisionsSetup = () => {
                     setIsSaving(false);
                 }
             } else if (state.schedule && state.schedule.error) {
-                // If generation itself failed, navigate to the schedule page to show the error
                 navigate('/schedule');
                 setIsSaving(false);
             }
         };
 
-        // Only trigger the save if `isSaving` is true.
-        // This prevents this from running on every state.schedule change.
         if (isSaving) {
             saveSchedule();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [state.schedule, isSaving]); // Dependencies ensure this runs when needed
+    }, [state.schedule, isSaving]);
 
 
     return (
         <div className="page-card">
             <h2>2. Divisions Setup</h2>
             {state.divisions.map((division, index) => (
-                <div key={division.id} className="page-card" style={{ border: '1px solid #ddd', marginTop: '1rem' }}>
+                <div key={division.id} className="page-card" style={{ border: '1px solid #ddd', marginTop: '1rem', padding: '1.5rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                         <h4>Division #{index + 1}: {division.name || 'Untitled'}</h4>
                         <button className="button-secondary" onClick={() => handleRemoveDivision(division.id)} disabled={isSaving}>
                             Remove Division
                         </button>
                     </div>
-                    {/* The rest of the JSX is the same, just add 'disabled={isSaving}' to interactive elements */}
-                    <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
+
+                    <div className="form-grid-2-col">
                         <div className="form-group">
                             <label htmlFor={`name-${division.id}`}>Division Name</label>
                             <input type="text" id={`name-${division.id}`} value={division.name} onChange={(e) => handleDivisionChange(division.id, 'name', e.target.value)} disabled={isSaving}/>
@@ -109,25 +101,37 @@ const DivisionsSetup = () => {
                             <input type="number" id={`numTeams-${division.id}`} min="2" value={division.numTeams} onChange={(e) => handleDivisionChange(division.id, 'numTeams', e.target.value)} disabled={isSaving}/>
                         </div>
                     </div>
-                    {/* ... other form elements ... */}
-                    <div style={{marginTop: '2rem'}}>
-                        <button onClick={handleAddDivision} style={{ marginRight: '1rem' }} disabled={isSaving}>
-                            + Add Division
-                        </button>
-                        <button onClick={handleGenerateAndSaveSchedule} disabled={isSaving}>
-                            {isSaving ? 'Generating & Saving...' : 'Generate & Save Schedule'}
-                        </button>
-                    </div>
+
+                    <button className="button-secondary" style={{marginTop: '1rem'}} onClick={() => toggleTeamNamesVisibility(division.id)}>
+                        {visibleTeamNames[division.id] ? 'Hide Team Names' : 'Name Teams'}
+                    </button>
+
+                    {visibleTeamNames[division.id] && (
+                        <div style={{marginTop: '1rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem', borderTop: '1px solid #eee', paddingTop: '1rem'}}>
+                            {division.teamNames.map((teamName, teamIndex) => (
+                                <div key={teamIndex} className="form-group">
+                                    <label htmlFor={`teamName-${division.id}-${teamIndex}`}>Team #{teamIndex + 1} Name</label>
+                                    <input
+                                        type="text"
+                                        id={`teamName-${division.id}-${teamIndex}`}
+                                        value={teamName}
+                                        onChange={(e) => handleTeamNameChange(division.id, teamIndex, e.target.value)}
+                                        disabled={isSaving}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             ))}
-            {/* Final Buttons if divisions array is empty */}
-            {state.divisions.length === 0 && (
-                <div style={{marginTop: '2rem'}}>
-                    <button onClick={handleAddDivision} style={{ marginRight: '1rem' }} disabled={isSaving}>
-                        + Add Division
-                    </button>
-                </div>
-            )}
+            <div style={{marginTop: '2rem'}}>
+                <button onClick={handleAddDivision} style={{ marginRight: '1rem' }} disabled={isSaving}>
+                    + Add Division
+                </button>
+                <button onClick={handleGenerateAndSaveSchedule} disabled={isSaving}>
+                    {isSaving ? 'Generating & Saving...' : 'Generate & Save Schedule'}
+                </button>
+            </div>
         </div>
     );
 };
