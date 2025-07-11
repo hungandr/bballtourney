@@ -1,12 +1,19 @@
 .app-header {
-    background-color: #0d47a1; /* A deep blue color */
-    padding: 0 2rem; /* Adjusted padding */
+    background-color: #0d47a1;
+    padding: 0 2rem;
     color: white;
     display: flex;
     align-items: center;
     justify-content: space-between;
     box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    height: 70px; /* Give the header a fixed height */
+    height: 70px;
+
+    /* --- THESE ARE THE NEW STICKY PROPERTIES --- */
+    position: fixed; /* Makes the header stick to the viewport */
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000; /* Ensures it's on top of other content */
 }
 
 .header-title h1 {
@@ -19,8 +26,6 @@
     text-decoration: none;
 }
 
-/* --- NEW STYLES FOR THE NAVIGATION STEPS --- */
-
 .nav-steps {
     display: flex;
     height: 100%;
@@ -30,21 +35,20 @@
     display: flex;
     align-items: center;
     padding: 0 1.5rem;
-    color: #bbdefb; /* Lighter blue for inactive steps */
+    color: #bbdefb;
     text-decoration: none;
     font-weight: 500;
-    border-bottom: 4px solid transparent; /* Placeholder for active indicator */
+    border-bottom: 4px solid transparent;
     transition: all 0.2s ease-in-out;
 }
 
 .nav-step:hover {
-    background-color: #1565c0; /* Slightly lighter blue on hover */
+    background-color: #1565c0;
     color: white;
 }
 
-/* This is the style for the currently active navigation link */
 .nav-step.active {
-    color: white; /* White text for the active step */
-    background-color: #1976d2; /* A brighter blue background */
-    border-bottom: 4px solid #ffca28; /* Yellow accent line */
+    color: white;
+    background-color: #1976d2;
+    border-bottom: 4px solid #ffca28;
 }

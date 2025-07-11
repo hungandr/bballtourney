@@ -1,4 +1,5 @@
-// --- Helper Functions ---
+// src/utils/scheduleGenerator.js
+
 function createTimeSlots(settings) {
     const slots = [];
     const { courts, dayTimes, gameDuration } = settings;
@@ -33,190 +34,210 @@ function generateRoundRobinGames(teams) {
     return games;
 }
 
-
-// --- Main Scheduling Function (Definitive, Constraint-Driven, Priority-Scoring Algorithm) ---
-
-export function generateFullSchedule(tournamentState) {
-    const { settings, divisions } = tournamentState;
-
-    // --- 1. SETUP PER-DIVISION STATE TRACKING ---
+function scheduleBracketPhase(divisionsToSchedule, endBeforeTime, availableSlots, settings) {
+    if (divisionsToSchedule.length === 0) return { scheduledGames: [], earliestGameStartTime: endBeforeTime, error: null };
     const divisionStates = new Map();
     let totalGamesToSchedule = 0;
-    const allTeamIds = new Set();
-
-    divisions.forEach(division => {
-        const teamLastGameEndTime = new Map();
-        const teamRemainingGames = new Map();
-        const teamGamesOnDay = new Map();
-        let gamesToSchedule = [];
-
-        const createTeamId = (teamIndex) => `${division.id}-Team${teamIndex + 1}`;
-        const teamIds = Array.from({ length: division.numTeams }, (_, i) => {
-            const teamId = createTeamId(i);
-            teamLastGameEndTime.set(teamId, 0);
-            teamRemainingGames.set(teamId, division.numTeams - 1);
-            teamGamesOnDay.set(teamId, {});
-            allTeamIds.add(teamId);
-            return teamId;
-        });
-
-        gamesToSchedule.push(...generateRoundRobinGames(teamIds).map(g => ({...g, division, phase: division.gameType})));
-
-        divisionStates.set(division.id, {
-            division, teamLastGameEndTime, teamRemainingGames, teamGamesOnDay, gamesToSchedule
-        });
+    divisionsToSchedule.forEach(division => {
+        const teamNextGameStartTime = new Map();
+        let gamesToSchedule = generateRoundRobinGames(Array.from({ length: division.numTeams }, (_, i) => `${division.id}-Team${i + 1}`)).map(g => ({ ...g, division, phase: division.divisionType }));
+        gamesToSchedule.forEach(g => [g.team1, g.team2].forEach(teamId => teamNextGameStartTime.set(teamId, Infinity)));
+        divisionStates.set(division.id, { division, teamNextGameStartTime, gamesToSchedule });
         totalGamesToSchedule += gamesToSchedule.length;
     });
-
-    // --- 2. SETUP GLOBAL SCHEDULING STATE ---
-    const availableSlots = createTimeSlots(settings);
     const scheduledGames = [];
-
-    if (totalGamesToSchedule > availableSlots.length) {
-        return { error: `Scheduling Impossible: You need ${totalGamesToSchedule} slots, but only ${availableSlots.length} are available.`, games: [] };
-    }
-
+    let earliestGameStartTime = endBeforeTime;
     const effectiveMinBreak = Math.max(1, settings.minBreak);
-    const numDaysInTournament = settings.dayTimes.length;
-
-    // --- 3. THE DEFINITIVE SCHEDULING LOOP ---
+    const slotsByTime = new Map();
     for (const slot of availableSlots) {
+        if (!slotsByTime.has(slot.absTime)) slotsByTime.set(slot.absTime, []);
+        slotsByTime.get(slot.absTime).push(slot);
+    }
+    const sortedTimes = Array.from(slotsByTime.keys()).sort((a, b) => b - a);
+    for (const time of sortedTimes) {
         if (scheduledGames.length === totalGamesToSchedule) break;
-
-        let candidateGames = [];
-
-        // A. Gather all possible valid games for this slot from all divisions
-        for (const [divisionId, state] of divisionStates.entries()) {
-            if (state.gamesToSchedule.length > 0) {
+        if (time + settings.gameDuration > endBeforeTime) continue;
+        const slotsForThisTime = slotsByTime.get(time);
+        for (const slot of slotsForThisTime) {
+            if (scheduledGames.length === totalGamesToSchedule) break;
+            let candidateGames = [];
+            for (const state of divisionStates.values()) {
                 for (const game of state.gamesToSchedule) {
-                    const team1 = game.team1;
-                    const team2 = game.team2;
-
-                    // --- HARD CONSTRAINTS ---
-                    // Max 2 games per day for any team
-                    const team1GamesToday = state.teamGamesOnDay[team1]?.[slot.day] || 0;
-                    const team2GamesToday = state.teamGamesOnDay[team2]?.[slot.day] || 0;
-                    if (team1GamesToday >= 2 || team2GamesToday >= 2) continue;
-
-                    const lastGameEnd1 = state.teamLastGameEndTime.get(team1);
-                    const lastGameEnd2 = state.teamLastGameEndTime.get(team2);
-                    if (slot.absTime >= lastGameEnd1 + effectiveMinBreak && slot.absTime >= lastGameEnd2 + effectiveMinBreak) {
-                        candidateGames.push({ game, divisionId });
+                    const nextGameStart1 = state.teamNextGameStartTime.get(game.team1);
+                    const nextGameStart2 = state.teamNextGameStartTime.get(game.team2);
+                    if (slot.absTime + settings.gameDuration <= nextGameStart1 - effectiveMinBreak && slot.absTime + settings.gameDuration <= nextGameStart2 - effectiveMinBreak) {
+                        candidateGames.push({ game, divisionId: state.division.id });
                     }
                 }
             }
+            if (candidateGames.length === 0) continue;
+            candidateGames.sort((a, b) => {
+                if (a.divisionId !== b.divisionId) return String(a.divisionId).localeCompare(String(b.divisionId));
+                return String(a.game.team1).localeCompare(String(b.game.team1));
+            });
+            const bestCandidate = candidateGames[0];
+            const { game, divisionId } = bestCandidate;
+            const state = divisionStates.get(divisionId);
+            const formatTeamName = (teamId) => {
+                const teamNumber = parseInt(teamId.split('-Team').pop());
+                const customName = state.division.teamNames?.[teamNumber - 1];
+                return customName?.trim() || `${state.division.name} - Team ${teamNumber}`;
+            };
+            scheduledGames.push({ id: `game-${Math.random()}`, ...slot, divisionName: state.division.name, gamePhase: game.phase, team1: formatTeamName(game.team1), team2: formatTeamName(game.team2) });
+            earliestGameStartTime = Math.min(earliestGameStartTime, slot.absTime);
+            state.gamesToSchedule.splice(state.gamesToSchedule.indexOf(game), 1);
+            state.teamNextGameStartTime.set(game.team1, slot.absTime);
+            state.teamNextGameStartTime.set(game.team2, slot.absTime);
         }
-
-        if (candidateGames.length === 0) continue;
-
-        // B. Choose the "best" candidate using a new priority scoring model for schedule compaction
-        candidateGames.forEach(candidate => {
-            let score = 0;
-            const state = divisionStates.get(candidate.divisionId);
-            const { team1, team2 } = candidate.game;
-
-            // --- Priority 1: Schedule a team's first game of the tournament to compact the schedule ---
-            const team1TotalGames = Object.values(state.teamGamesOnDay[team1] || {}).reduce((a, b) => a + b, 0);
-            const team2TotalGames = Object.values(state.teamGamesOnDay[team2] || {}).reduce((a, b) => a + b, 0);
-            if (team1TotalGames === 0) score += 10000; // Highest priority to get a team's first game
-            if (team2TotalGames === 0) score += 10000;
-
-            // --- Priority 2: Fulfill the "1 game per day" goal ---
-            const team1GamesToday = state.teamGamesOnDay[team1]?.[slot.day] || 0;
-            const team2GamesToday = state.teamGamesOnDay[team2]?.[slot.day] || 0;
-            if (team1GamesToday === 0) score += 1000; // High priority to meet min 1 game/day
-            if (team2GamesToday === 0) score += 1000;
-
-            // --- Priority 3: Urgency (prioritize teams with more games remaining) ---
-            const urgency = state.teamRemainingGames.get(team1) + state.teamRemainingGames.get(team2);
-            score += urgency; // Lower priority, acts as a tie-breaker
-
-            candidate.score = score;
-        });
-
-
-        candidateGames.sort((a, b) => {
-            if (b.score !== a.score) return b.score - a.score;
-            return Math.random() - 0.5;
-        });
-
-        const bestCandidate = candidateGames[0];
-        const { game, divisionId } = bestCandidate;
-        const state = divisionStates.get(divisionId);
-
-        // C. Schedule the chosen game
-        const formatTeamName = (teamId) => {
-            // --- CORRECTED PARSING LOGIC ---
-            const teamNumberStr = teamId.split('-Team').pop();
-            const teamNumber = parseInt(teamNumberStr);
-            const teamIndex = teamNumber - 1;
-
-            const customName = state.division.teamNames?.[teamIndex];
-            if (customName && customName.trim() !== '') return customName;
-
-            const divisionName = state.division.name || `Division ${state.division.id}`;
-            return `${divisionName} - Team ${teamNumber}`;
-        };
-
-        const scheduledGame = {
-            id: `game-${Date.now() + scheduledGames.length}`, ...slot,
-            divisionName: state.division.name,
-            gamePhase: game.phase,
-            team1: formatTeamName(game.team1),
-            team2: formatTeamName(game.team2),
-            team1Id: game.team1,
-            team2Id: game.team2
-        };
-        scheduledGames.push(scheduledGame);
-
-        // D. Remove the game and update trackers
-        state.gamesToSchedule = state.gamesToSchedule.filter(g => g !== game);
-        const slotEndTime = slot.absTime + settings.gameDuration;
-        state.teamLastGameEndTime.set(game.team1, slotEndTime);
-        state.teamLastGameEndTime.set(game.team2, slotEndTime);
-        state.teamRemainingGames.set(game.team1, state.teamRemainingGames.get(game.team1) - 1);
-        state.teamRemainingGames.set(game.team2, state.teamRemainingGames.get(game.team2) - 1);
-        if (!state.teamGamesOnDay[game.team1]) state.teamGamesOnDay[game.team1] = {};
-        if (!state.teamGamesOnDay[game.team2]) state.teamGamesOnDay[game.team2] = {};
-        state.teamGamesOnDay[game.team1][slot.day] = (state.teamGamesOnDay[game.team1][slot.day] || 0) + 1;
-        state.teamGamesOnDay[game.team2][slot.day] = (state.teamGamesOnDay[game.team2][slot.day] || 0) + 1;
+        if (scheduledGames.length === totalGamesToSchedule) break;
     }
-
-    // --- 4. FINAL VALIDATION ---
-    let remainingGamesCount = 0;
-    for (const state of divisionStates.values()) {
-        remainingGamesCount += state.gamesToSchedule.length;
+    if (scheduledGames.length !== totalGamesToSchedule) {
+        return { error: `Could not schedule all games for the ${divisionsToSchedule[0]?.divisionType} phase. ${totalGamesToSchedule - scheduledGames.length} games remaining.` };
     }
-    if (remainingGamesCount > 0) {
-        return { error: `Scheduling Failed: Could not schedule the last ${remainingGamesCount} games. The schedule is too constrained.`, games: scheduledGames };
+    return { scheduledGames, earliestGameStartTime, error: null };
+}
+
+function schedulePoolPlayPhase(divisionsToSchedule, availableSlots, settings) {
+    if (divisionsToSchedule.length === 0) return { scheduledGames: [], error: null };
+
+    const divisionStates = new Map();
+    let totalGamesToSchedule = 0;
+    divisionsToSchedule.forEach(division => {
+        const teamLastGameInfo = new Map();
+        const teamGamesOnDay = new Map();
+        let gamesToSchedule = generateRoundRobinGames(Array.from({ length: division.numTeams }, (_, i) => `${division.id}-Team${i + 1}`)).map(g => ({ ...g, division, phase: 'Pool Play' }));
+        gamesToSchedule.forEach(g => [g.team1, g.team2].forEach(teamId => {
+            teamLastGameInfo.set(teamId, { endTime: 0, day: 0 });
+            teamGamesOnDay.set(teamId, {});
+        }));
+        divisionStates.set(division.id, { division, teamLastGameInfo, teamGamesOnDay, gamesToSchedule });
+        totalGamesToSchedule += gamesToSchedule.length;
+    });
+
+    const scheduledGames = [];
+    const effectiveMinBreak = Math.max(1, settings.minBreak);
+    const maxBreak = settings.maxBreak || Infinity;
+
+    const slotsByTime = new Map();
+    for (const slot of availableSlots) {
+        if (!slotsByTime.has(slot.absTime)) slotsByTime.set(slot.absTime, []);
+        slotsByTime.get(slot.absTime).push(slot);
     }
+    const sortedTimes = Array.from(slotsByTime.keys()).sort((a, b) => a - b);
 
-    // Post-generation validation for the game-per-day rule
-    if (numDaysInTournament > 1) {
-        const finalTeamDaysPlayed = new Map();
-        allTeamIds.forEach(id => finalTeamDaysPlayed.set(id, new Set()));
-
-        scheduledGames.forEach(game => {
-            if (game.team1Id && finalTeamDaysPlayed.has(game.team1Id)) finalTeamDaysPlayed.get(game.team1Id).add(game.day);
-            if (game.team2Id && finalTeamDaysPlayed.has(game.team2Id)) finalTeamDaysPlayed.get(game.team2Id).add(game.day);
-        });
-
-        for (const [teamId, daysPlayed] of finalTeamDaysPlayed.entries()) {
-            let divisionName = "Unknown Division";
-            let divisionType = "Unknown";
+    for (const time of sortedTimes) {
+        const slotsForThisTime = slotsByTime.get(time);
+        for (const slot of slotsForThisTime) {
+            if (scheduledGames.length === totalGamesToSchedule) break;
+            let candidateGames = [];
             for (const state of divisionStates.values()) {
-                if (teamId.startsWith(String(state.division.id))) {
-                    divisionName = state.division.name;
-                    divisionType = state.division.gameType;
-                    break;
+                for (const game of state.gamesToSchedule) {
+                    const team1GamesToday = state.teamGamesOnDay.get(game.team1)?.[slot.day] || 0;
+                    const team2GamesToday = state.teamGamesOnDay.get(game.team2)?.[slot.day] || 0;
+                    if (team1GamesToday >= 2 || team2GamesToday >= 2) continue;
+
+                    const lastGame1 = state.teamLastGameInfo.get(game.team1);
+                    const lastGame2 = state.teamLastGameInfo.get(game.team2);
+
+                    let isEligible = true;
+                    // Check team 1 constraints
+                    if (lastGame1.day !== 0 && slot.day === lastGame1.day) {
+                        const breakTime1 = slot.absTime - lastGame1.endTime;
+                        if (breakTime1 < effectiveMinBreak || breakTime1 > maxBreak) {
+                            isEligible = false;
+                        }
+                    }
+                    // Check team 2 constraints, only if team 1 is still eligible
+                    if (isEligible && lastGame2.day !== 0 && slot.day === lastGame2.day) {
+                        const breakTime2 = slot.absTime - lastGame2.endTime;
+                        if (breakTime2 < effectiveMinBreak || breakTime2 > maxBreak) {
+                            isEligible = false;
+                        }
+                    }
+
+                    if (isEligible) {
+                        candidateGames.push({ game, divisionId: state.division.id });
+                    }
                 }
             }
-            if (divisionType === 'Pool Play' && !daysPlayed.has(1)) {
-                const teamName = `Team ${teamId.split('-').pop()}`;
-                return { error: `CRITICAL LOGIC ERROR: Team "${teamName}" in Pool Play division "${divisionName}" was not scheduled on Day 1. Please report this bug.`, games: scheduledGames };
-            }
-        }
-    }
+            if (candidateGames.length === 0) continue;
 
-    return { error: null, games: scheduledGames };
+            candidateGames.forEach(candidate => {
+                let score = 0;
+                const state = divisionStates.get(candidate.divisionId);
+                const { team1, team2 } = candidate.game;
+                const team1TotalGames = Object.values(state.teamGamesOnDay.get(team1)).reduce((a, b) => a + b, 0);
+                const team2TotalGames = Object.values(state.teamGamesOnDay.get(team2)).reduce((a, b) => a + b, 0);
+                if (team1TotalGames === 0) score += 10000;
+                if (team2TotalGames === 0) score += 10000;
+                const team1GamesToday = state.teamGamesOnDay.get(team1)[slot.day] || 0;
+                const team2GamesToday = state.teamGamesOnDay.get(team2)[slot.day] || 0;
+                if (team1GamesToday === 0) score += 1000;
+                if (team2GamesToday === 0) score += 1000;
+                candidate.score = score;
+            });
+
+            candidateGames.sort((a, b) => {
+                if (b.score !== a.score) return b.score - a.score;
+                if (a.divisionId !== b.divisionId) return String(a.divisionId).localeCompare(String(b.divisionId));
+                return String(a.game.team1).localeCompare(String(b.game.team1));
+            });
+
+            const bestCandidate = candidateGames[0];
+            const { game, divisionId } = bestCandidate;
+            const state = divisionStates.get(divisionId);
+            const formatTeamName = (teamId) => {
+                const teamNumber = parseInt(teamId.split('-Team').pop());
+                const customName = state.division.teamNames?.[teamNumber - 1];
+                return customName?.trim() || `${state.division.name} - Team ${teamNumber}`;
+            };
+            const scheduledGame = { id: `game-${Math.random()}`, ...slot, divisionName: state.division.name, gamePhase: game.phase, team1: formatTeamName(game.team1), team2: formatTeamName(game.team2) };
+            scheduledGames.push(scheduledGame);
+
+            const newGameInfo = { endTime: slot.absTime + settings.gameDuration, day: slot.day };
+            state.gamesToSchedule.splice(state.gamesToSchedule.indexOf(game), 1);
+            state.teamLastGameInfo.set(game.team1, newGameInfo);
+            state.teamLastGameInfo.set(game.team2, newGameInfo);
+            state.teamGamesOnDay.get(game.team1)[slot.day] = (state.teamGamesOnDay.get(game.team1)[slot.day] || 0) + 1;
+            state.teamGamesOnDay.get(game.team2)[slot.day] = (state.teamGamesOnDay.get(game.team2)[slot.day] || 0) + 1;
+        }
+        if (scheduledGames.length === totalGamesToSchedule) break;
+    }
+    if (scheduledGames.length !== totalGamesToSchedule) {
+        return { error: `Could not schedule all Pool Play games. ${totalGamesToSchedule - scheduledGames.length} games remaining.` };
+    }
+    return { scheduledGames, error: null };
+}
+
+export function generateFullSchedule(tournamentState) {
+    const { settings, divisions } = tournamentState;
+    const poolPlayDivisions = divisions.filter(d => d.divisionType !== 'Championship' && d.divisionType !== 'Consolation');
+    const consolationDivisions = divisions.filter(d => d.divisionType === 'Consolation');
+    const championshipDivisions = divisions.filter(d => d.divisionType === 'Championship');
+    const allSlots = createTimeSlots(settings);
+    const lastDay = settings.days;
+    const lastDaySlots = allSlots.filter(s => s.day === lastDay);
+    let bracketGames = [];
+    let earliestGameTime = Infinity;
+    const championshipResult = scheduleBracketPhase(championshipDivisions, Infinity, lastDaySlots, settings);
+    if (championshipResult.error) return championshipResult;
+    bracketGames.push(...championshipResult.scheduledGames);
+    earliestGameTime = championshipResult.earliestGameStartTime;
+    const consolationResult = scheduleBracketPhase(consolationDivisions, earliestGameTime, lastDaySlots, settings);
+    if (consolationResult.error) return consolationResult;
+    bracketGames.push(...consolationResult.scheduledGames);
+    const occupiedSlotKeys = new Set(bracketGames.map(g => `${g.day}-${g.court}-${g.time}`));
+    const poolPlaySlots = allSlots.filter(s => !occupiedSlotKeys.has(`${s.day}-${s.court}-${s.time}`));
+    const poolPlayResult = schedulePoolPlayPhase(poolPlayDivisions, poolPlaySlots, settings);
+    if (poolPlayResult.error) return poolPlayResult;
+    const allScheduledGames = [...bracketGames, ...poolPlayResult.scheduledGames];
+    const totalGamesToSchedule = divisions.reduce((sum, div) => {
+        if (div.numTeams < 2) return sum;
+        return sum + (div.numTeams * (div.numTeams - 1) / 2);
+    }, 0);
+    if (allScheduledGames.length < totalGamesToSchedule) {
+        return { error: `Scheduling failed. Only ${allScheduledGames.length} of ${totalGamesToSchedule} games could be placed. Try adding more time or courts.` };
+    }
+    allScheduledGames.sort((a, b) => a.absTime - b.absTime || a.court - b.court);
+    return { error: null, games: allScheduledGames };
 }

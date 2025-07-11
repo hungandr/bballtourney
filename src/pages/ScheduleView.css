@@ -1,109 +1,60 @@
 /* src/pages/ScheduleView.css */
 
-.error-card {
-    background-color: #ffcdd2;
-    border: 1px solid #d32f2f;
-    color: #d32f2f;
-}
+.error-card { background-color: #ffcdd2; border: 1px solid #d32f2f; color: #d32f2f; }
+.error-card h2 { color: #c62828; }
+.view-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem; }
+.view-header h2, .view-header h3 { margin: 0; flex-shrink: 0; }
+.filter-input-wrapper { flex-grow: 1; display: flex; justify-content: center; }
+.filter-input { width: 100%; max-width: 400px; padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 1rem; }
+.no-results-card { text-align: center; padding: 2rem; background-color: #f8f9fa; border-radius: 8px; margin-top: 1rem; }
+.view-switcher { display: flex; gap: 0.5rem; background-color: #e0e0e0; border-radius: 8px; padding: 4px; }
+.view-switcher button { padding: 8px 16px; border: none; background-color: transparent; border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer; color: #333; transition: all 0.2s ease-in-out; }
+.view-switcher button:hover { background-color: #d1d1d1; }
+.view-switcher button.active { background-color: #ffffff; color: #0d47a1; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.schedule-grouping-block { background-color: #ffffff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin-bottom: 2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+.schedule-grouping-block h3 { margin-top: 0; padding-bottom: 15px; border-bottom: 2px solid #1976d2; color: #0d47a1; font-size: 1.5rem; }
+.schedule-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+.schedule-table th, .schedule-table td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+.schedule-table th { background-color: #e3f2fd; font-weight: bold; color: #0d47a1; }
+.schedule-table tbody tr:nth-child(even) { background-color: #f9f9f9; }
+.schedule-table tbody tr:hover { background-color: #f1f1f1; }
+.empty-slot { background-color: #fafafa !important; }
+.empty-slot-text { text-align: center; color: #9e9e9e; font-style: italic; }
+.schedule-view-layout { display: flex; gap: 2rem; align-items: flex-start; }
+.schedule-content { flex: 1; }
+.schedule-sidebar { flex: 0 0 280px; background-color: #f8f9fa; padding: 1rem; border-radius: 8px; border: 1px solid #e0e0e0; position: sticky; top: 90px; }
+.schedule-sidebar h3 { margin-top: 0; color: #0d47a1; border-bottom: 1px solid #ccc; padding-bottom: 0.5rem; }
+.schedule-list { list-style: none; padding: 0; margin: 0; max-height: calc(100vh - 150px); overflow-y: auto; }
+.schedule-list-item { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e0e0e0; }
+.schedule-list-item:last-child { border-bottom: none; }
+.schedule-list-item a { display: block; padding: 12px 10px; text-decoration: none; color: #333; transition: background-color 0.2s; font-size: 0.9rem; flex-grow: 1; }
+.schedule-list-item a:hover { background-color: #e9ecef; }
+.schedule-list-item a.active { background-color: #e3f2fd; color: #0d47a1; font-weight: bold; }
+.delete-button { background: none; border: none; color: #d32f2f; cursor: pointer; font-size: 1.2rem; font-weight: bold; padding: 0 10px; line-height: 1; }
+.delete-button:hover { color: white; background-color: #d32f2f; border-radius: 4px; }
+.master-schedule-block { background-color: #ffffff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin-bottom: 2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+.master-schedule-block h3 { margin-top: 0; padding-bottom: 15px; border-bottom: 2px solid #1976d2; color: #0d47a1; font-size: 1.5rem; }
+.master-schedule-wrapper { overflow-x: auto; padding-bottom: 10px; }
+.master-schedule-table { width: 100%; border-collapse: collapse; margin-top: 1rem; table-layout: fixed; }
+.master-schedule-table th, .master-schedule-table td { border: 1px solid #ddd; padding: 8px; text-align: center; min-width: 150px; }
+.master-schedule-table th { background-color: #e3f2fd; font-weight: bold; color: #0d47a1; }
+.time-header-cell { background-color: #f8f9fa; font-weight: bold; min-width: 120px; width: 120px; }
+.game-cell { padding: 4px; font-size: 0.8rem; line-height: 1.3; vertical-align: top; }
+.game-cell div { display: flex; flex-direction: column; justify-content: center; height: 100%; }
+.game-cell-teams { font-weight: bold; }
+.game-cell-division { color: #555; font-style: italic; margin-top: 4px; }
+.empty-cell { background-color: #f9f9f9; }
 
-.error-card h2 {
-    color: #c62828;
-}
-
-.view-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 2rem;
-    flex-wrap: wrap;
-}
-
-.view-header h2 {
-    margin: 0;
-}
-
-.view-switcher {
-    display: flex;
-    gap: 0.5rem;
-    background-color: #e0e0e0;
-    border-radius: 8px;
-    padding: 4px;
-}
-
-.view-switcher button {
-    padding: 8px 16px;
-    border: none;
-    background-color: transparent;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    color: #333;
-    transition: all 0.2s ease-in-out;
-}
-
-.view-switcher button:hover {
-    background-color: #d1d1d1;
-}
-
-.view-switcher button.active {
-    background-color: #ffffff;
-    color: #0d47a1;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
-.schedule-grouping-block {
-    background-color: #ffffff;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 2rem;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-}
-
-.schedule-grouping-block h3 {
-    margin-top: 0;
-    padding-bottom: 15px;
-    border-bottom: 2px solid #1976d2;
-    color: #0d47a1;
-    font-size: 1.5rem;
-}
-
-.schedule-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 1rem;
-}
-
-.schedule-table th,
-.schedule-table td {
-    border: 1px solid #ddd;
-    padding: 12px;
-    text-align: left;
-}
-
-.schedule-table th {
-    background-color: #e3f2fd;
-    font-weight: bold;
-    color: #0d47a1;
-}
-
-.schedule-table tbody tr:nth-child(even) {
-    background-color: #f9f9f9;
-}
-
-.schedule-table tbody tr:hover {
-    background-color: #f1f1f1;
-}
-
-/* --- NEW STYLES for Empty Slots --- */
-.empty-slot {
-    background-color: #fafafa !important; /* Important to override hover/zebra striping */
-}
-
-.empty-slot-text {
-    text-align: center;
-    color: #9e9e9e;
+/* --- THIS IS THE NEW STYLE --- */
+.empty-grid-cell {
+    background-color: #fafafa;
+    color: #b0b0b0;
     font-style: italic;
+    font-size: 0.8rem;
 }
-/* --- END of NEW STYLES --- */
+
+@media (max-width: 900px) {
+    .schedule-view-layout { flex-direction: column; }
+    .schedule-sidebar { position: static; flex: 1; width: 100%; margin-bottom: 2rem; max-height: 300px; }
+    .filter-input-wrapper { order: 1; }
+}

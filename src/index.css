@@ -7,6 +7,8 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background-color: #f4f7f6;
   color: #333;
+  /* --- THIS IS NEW: Pushes content down to make space for the sticky header --- */
+  padding-top: 70px;
 }
 
 code {
@@ -18,10 +20,14 @@ code {
 .page-card {
   background-color: white;
   max-width: 900px;
-  margin: 2rem auto;
+  margin: 1rem auto; /* Reduced top margin */
   padding: 2rem;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.page-card--wide {
+  max-width: 1400px;
 }
 
 /* Form Styles */
@@ -78,34 +84,19 @@ button:disabled {
 }
 
 /* --- RESPONSIVE STYLES --- */
-
-/*
- * ===================================================
- * GENERAL RESPONSIVENESS
- * ===================================================
- */
-
-/* Allow the main card to shrink on smaller screens */
 .page-card {
   width: 95%;
   padding: 1rem;
 }
-
-/* This is the class for two-column form layouts */
 .form-grid-2-col {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
 }
-
-/* Make form layouts stack vertically on smaller screens */
 @media (max-width: 768px) {
-  /* This targets any grid layout that should be single-column on mobile */
   .form-grid-2-col {
     grid-template-columns: 1fr;
   }
-
-  /* Stack the header elements for better readability */
   .view-header {
     flex-direction: column;
     align-items: flex-start;
@@ -113,58 +104,14 @@ button:disabled {
   }
 }
 
-/*
- * ===================================================
- * RESPONSIVE TABLES
- * This transforms the standard table into a "card" view on mobile.
- * ===================================================
- */
+/* Responsive Table Styles */
 @media (max-width: 768px) {
-  .schedule-table {
-    border: none;
-  }
-
-  /* Hide the desktop table headers */
-  .schedule-table thead {
-    display: none;
-  }
-
-  /* Make each row a distinct block (card) */
-  .schedule-table tr {
-    display: block;
-    border: 1px solid #ddd;
-    margin-bottom: 1rem;
-    border-radius: 8px;
-    padding: 1rem;
-  }
-
-  .schedule-table td {
-    display: block;
-    text-align: right; /* Align the data to the right */
-    border: none;
-    border-bottom: 1px dotted #ccc;
-    padding: 10px 0; /* Adjust padding for vertical layout */
-  }
-
-  .schedule-table td:last-child {
-    border-bottom: none;
-  }
-
-  /* Use the data-label attribute to create a label on the left */
-  .schedule-table td::before {
-    content: attr(data-label);
-    float: left;
-    font-weight: bold;
-    text-align: left;
-  }
-
-  /* Special styling for our empty/available slots */
-  .schedule-table td.empty-slot-text {
-    text-align: center; /* Center the "-- Available --" text */
-    padding: 1rem 0;
-  }
-
-  .schedule-table td.empty-slot-text::before {
-    display: none; /* Hide the pseudo-label for empty slots */
-  }
+  .schedule-table { border: none; }
+  .schedule-table thead { display: none; }
+  .schedule-table tr { display: block; border: 1px solid #ddd; margin-bottom: 1rem; border-radius: 8px; padding: 1rem; }
+  .schedule-table td { display: block; text-align: right; border: none; border-bottom: 1px dotted #ccc; padding: 10px 0; }
+  .schedule-table td:last-child { border-bottom: none; }
+  .schedule-table td::before { content: attr(data-label); float: left; font-weight: bold; text-align: left; }
+  .schedule-table td.empty-slot-text { text-align: center; padding: 1rem 0; }
+  .schedule-table td.empty-slot-text::before { display: none; }
 }

@@ -27,6 +27,19 @@ const tournamentSchema = new mongoose.Schema({
 
 const Tournament = mongoose.model('Tournament', tournamentSchema);
 
+// GET all saved tournaments (only ID and creation date)
+app.get('/api/tournaments', async (req, res) => {
+    try {
+        const tournaments = await Tournament.find({})
+            .select('_id createdAt')
+            .sort({ createdAt: -1 });
+        res.json(tournaments);
+    } catch (error) {
+        console.error('Error fetching all tournaments:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 // GET the most recently created tournament
 app.get('/api/tournaments/latest', async (req, res) => {
     try {
@@ -69,6 +82,24 @@ app.post('/api/tournaments', async (req, res) => {
         res.status(500).json({ message: 'Server error saving tournament' });
     }
 });
+
+// --- THIS IS THE NEW DELETE ROUTE ---
+app.delete('/api/tournaments/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const deletedTournament = await Tournament.findByIdAndDelete(id);
+
+        if (!deletedTournament) {
+            return res.status(404).json({ message: 'Tournament not found.' });
+        }
+
+        res.status(200).json({ message: 'Tournament deleted successfully.' });
+    } catch (error) {
+        console.error('Error deleting tournament:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 
 app.use(express.static(path.join(__dirname, 'build')));
 app.get('*', (req, res) => {
