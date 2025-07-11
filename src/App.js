@@ -6,8 +6,6 @@ import DivisionsSetup from './pages/DivisionsSetup';
 import ScheduleView from './pages/ScheduleView';
 
 function App() {
-    // The useEffect for automatically loading the latest schedule has been removed.
-
     return (
         <div className="App">
             <Header />
