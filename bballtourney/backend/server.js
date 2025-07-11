@@ -3,12 +3,14 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const path = require('path'); // <-- ADD THIS LINE
 
 const app = express();
 const PORT = process.env.PORT || 5001;
 
 // --- Middleware ---
-// Allow requests from your frontend's deployed URL
+// NOTE: CORS is less critical now since the frontend and backend are on the same domain,
+// but it's good practice to keep it for flexibility.
 const corsOptions = {
     origin: process.env.FRONTEND_URL || 'http://localhost:3000',
     optionsSuccessStatus: 200
@@ -74,6 +76,20 @@ app.post('/api/tournaments', async (req, res) => {
         res.status(500).json({ message: 'Server error saving tournament' });
     }
 });
+
+
+// --- vvvvvv ADD THIS BLOCK TO SERVE THE REACT APP vvvvvv ---
+// This serves the built React app's static files (like css, js, images)
+app.use(express.static(path.join(__dirname, 'build')));
+
+// This "catchall" handler serves the main index.html file
+// for any route that isn't an API route.
+// This is what allows React Router to handle the page navigation.
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'build', 'index.html'));
+});
+// --- ^^^^^^ END OF NEW BLOCK ^^^^^^ ---
+
 
 // --- Start Server ---
 app.listen(PORT, () => {
