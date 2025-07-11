@@ -5,7 +5,7 @@ import './ScheduleView.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
-// --- HELPER COMPONENT (UNCHANGED) ---
+// The ScheduleDetail helper component is unchanged...
 const ScheduleDetail = ({
                             scheduleId, isLoading, fetchError, schedule, settings, handleStartOver, navigate,
                             viewMode, setViewMode, filterText, setFilterText,
@@ -22,59 +22,21 @@ const ScheduleDetail = ({
     return (
         <div className="page-card page-card--wide">
             <div className="view-header">
-                <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}><h2 style={{whiteSpace: 'nowrap'}}>Tournament Schedule</h2><button onClick={handleStartOver} className="button-secondary">New</button></div>
+                <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}><h2 style={{whiteSpace: 'nowrap'}}>Tournament Schedule</h2><button onClick={handleStartOver} className="button-secondary">Start New</button></div>
             </div>
-
-            {Object.entries(masterScheduleGrid).map(([day, dayData]) => (
-                <div key={day} className="master-schedule-block">
-                    <h3>{day} - Master Grid</h3>
-                    <div className="master-schedule-wrapper">
-                        <table className="master-schedule-table">
-                            <thead>
-                            <tr>
-                                <th className="time-header-cell">Time</th>
-                                {dayData.courts.map(court => <th key={court}>Court {court}</th>)}
-                            </tr>
-                            </thead>
-                            <tbody>
-                            {dayData.times.map(time => (
-                                <tr key={time}>
-                                    <td className="time-header-cell">{formatTime12Hour(time)}</td>
-                                    {dayData.courts.map(court => {
-                                        const game = dayData.grid[time][court];
-                                        // --- THIS LOGIC IS UPDATED ---
-                                        return (
-                                            <td key={court} className={game ? 'game-cell' : 'empty-grid-cell'}>
-                                                {game ? (
-                                                    <div>
-                                                        <span className="game-cell-teams">{game.team1} vs {game.team2}</span>
-                                                        <span className="game-cell-division">{game.divisionName}</span>
-                                                    </div>
-                                                ) : '--'}
-                                            </td>
-                                        );
-                                    })}
-                                </tr>
-                            ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            ))}
-
+            {Object.entries(masterScheduleGrid).map(([day, dayData]) => ( <div key={day} className="master-schedule-block"><h3>{day} - Master Grid</h3><div className="master-schedule-wrapper"><table className="master-schedule-table"><thead><tr><th className="time-header-cell">Time</th>{dayData.courts.map(court => <th key={court}>Court {court}</th>)}</tr></thead><tbody>{dayData.times.map(time => (<tr key={time}><td className="time-header-cell">{formatTime12Hour(time)}</td>{dayData.courts.map(court => { const game = dayData.grid[time][court]; return (<td key={court} className={game ? 'game-cell' : 'empty-grid-cell'}>{game ? (<div><span className="game-cell-teams">{game.team1} vs {game.team2}</span><span className="game-cell-division">{game.divisionName}</span></div>) : '--'}</td>);})}</tr>))}</tbody></table></div></div> ))}
             <div className="view-header" style={{marginTop: '3rem', borderTop: '2px solid #eee', paddingTop: '2rem'}}>
                 <h3>Detailed Views</h3>
                 <div className="filter-input-wrapper"><input type="text" className="filter-input" placeholder="Filter by team or division..." value={filterText} onChange={(e) => setFilterText(e.target.value)}/></div>
                 <div className="view-switcher"><button onClick={() => setViewMode('division')} className={viewMode === 'division' ? 'active' : ''}>By Division</button><button onClick={() => setViewMode('court')} className={viewMode === 'court' ? 'active' : ''}>By Court</button><button onClick={() => setViewMode('day')} className={viewMode === 'day' ? 'active' : ''}>By Day</button><button onClick={() => setViewMode('team')} className={viewMode === 'team' ? 'active' : ''}>By Team</button></div>
             </div>
-
             {Object.entries(filteredDetailedData).map(([groupName, games]) => (<div key={groupName} className="schedule-grouping-block"><h3>{groupName}</h3>{renderGamesTable(games)}</div>))}
             {Object.keys(filteredDetailedData).length === 0 && filterText && (<div className="no-results-card"><p>No games match your filter: "{filterText}"</p></div>)}
         </div>
     );
 };
 
-// --- THE MAIN COMPONENT ---
+// The main ScheduleView component logic
 const ScheduleView = () => {
     const { state, dispatch } = useTournament();
     const { schedule, settings } = state;
@@ -113,9 +75,7 @@ const ScheduleView = () => {
             setFilterText('');
             try {
                 const response = await fetch(`${API_URL}/api/tournaments/${id}`);
-                if (!response.ok) {
-                    throw new Error((await response.json()).message || 'Could not fetch schedule data.');
-                }
+                if (!response.ok) throw new Error((await response.json()).message || 'Could not fetch schedule data.');
                 dispatch({ type: 'SET_FULL_STATE', payload: await response.json() });
             } catch (err) {
                 setFetchError(err.message);
@@ -152,46 +112,34 @@ const ScheduleView = () => {
         return `${hour}:${minute} ${period}`;
     };
 
-    // --- THIS MEMO HOOK IS UPDATED ---
     const masterScheduleGrid = useMemo(() => {
-        if (!schedule?.games || !settings || !Array.isArray(settings.dayTimes)) {
-            return {};
-        }
-
+        if (!schedule?.games || !settings || !Array.isArray(settings.dayTimes)) return {};
         const gridData = {};
         const gameMap = new Map(schedule.games.map(g => [`${g.day}-${g.court}-${g.time}`, g]));
         const timeToMinutes = (timeStr) => parseInt(timeStr.split(':')[0]) * 60 + parseInt(timeStr.split(':')[1]);
-
         settings.dayTimes.forEach((daySetting, dayIndex) => {
             const day = dayIndex + 1;
             const dayKey = `Day ${day}`;
             const start = timeToMinutes(daySetting.startTime);
             const end = timeToMinutes(daySetting.endTime);
             const courts = [...Array(settings.courts).keys()].map(i => i + 1);
-
             const times = [];
             const grid = {};
-
             for (let time = start; time <= end; time += settings.gameDuration) {
                 const hours = Math.floor(time / 60).toString().padStart(2, '0');
                 const minutes = (time % 60).toString().padStart(2, '0');
                 const timeString = `${hours}:${minutes}`;
                 times.push(timeString);
-
                 grid[timeString] = {};
                 courts.forEach(court => {
-                    const game = gameMap.get(`${day}-${court}-${timeString}`);
-                    grid[timeString][court] = game || null; // Use null for empty slots
+                    grid[timeString][court] = gameMap.get(`${day}-${court}-${timeString}`) || null;
                 });
             }
-
             gridData[dayKey] = { times, courts, grid };
         });
-
         return gridData;
     }, [schedule, settings]);
 
-    // ... (the rest of the useMemo hooks are unchanged) ...
     const gamesByDivision = useMemo(() => {
         if (!schedule?.games) return {};
         return schedule.games.reduce((acc, game) => {
@@ -201,6 +149,7 @@ const ScheduleView = () => {
             return acc;
         }, {});
     }, [schedule]);
+
     const gamesByCourt = useMemo(() => {
         if (!schedule?.games || !settings || !Array.isArray(settings.dayTimes)) return {};
         const timeToMinutes = (timeStr) => parseInt(timeStr.split(':')[0]) * 60 + parseInt(timeStr.split(':')[1]);
@@ -228,6 +177,7 @@ const ScheduleView = () => {
         }, {});
         return grouped;
     }, [schedule, settings]);
+
     const gamesByDay = useMemo(() => {
         if (!schedule?.games) return {};
         return schedule.games.reduce((acc, game) => {
@@ -237,6 +187,7 @@ const ScheduleView = () => {
             return acc;
         }, {});
     }, [schedule]);
+
     const gamesByTeam = useMemo(() => {
         if (!schedule?.games) return {};
         const allTeams = new Set();
@@ -250,6 +201,7 @@ const ScheduleView = () => {
         });
         return grouped;
     }, [schedule]);
+
     const filteredDetailedData = useMemo(() => {
         let sourceData;
         if (viewMode === 'division') sourceData = gamesByDivision;
@@ -263,16 +215,13 @@ const ScheduleView = () => {
         for (const groupName in sourceData) {
             const filteredGames = sourceData[groupName].filter(game => {
                 if (game.type === 'empty') return false;
-                return (
-                    (game.team1 && game.team1.toLowerCase().includes(lowerCaseFilter)) ||
-                    (game.team2 && game.team2.toLowerCase().includes(lowerCaseFilter)) ||
-                    (game.divisionName && game.divisionName.toLowerCase().includes(lowerCaseFilter))
-                );
+                return ((game.team1 && game.team1.toLowerCase().includes(lowerCaseFilter)) || (game.team2 && game.team2.toLowerCase().includes(lowerCaseFilter)) || (game.divisionName && game.divisionName.toLowerCase().includes(lowerCaseFilter)));
             });
             if (filteredGames.length > 0) filteredResult[groupName] = filteredGames;
         }
         return filteredResult;
     }, [filterText, viewMode, gamesByDivision, gamesByCourt, gamesByDay, gamesByTeam]);
+
     const renderGamesTable = (games) => (
         <table className="schedule-table">
             <thead>

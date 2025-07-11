@@ -1,39 +1,12 @@
-import React, { useEffect } from 'react';
-import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import React from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import Header from './components/Header';
 import TournamentSetup from './pages/TournamentSetup';
 import DivisionsSetup from './pages/DivisionsSetup';
 import ScheduleView from './pages/ScheduleView';
 
-const API_URL = process.env.REACT_APP_API_URL || ''; // Use relative path for unified build
-
 function App() {
-    const location = useLocation();
-    const navigate = useNavigate();
-
-    useEffect(() => {
-        const fetchLatestSchedule = async () => {
-            try {
-                const response = await fetch(`${API_URL}/api/tournaments/latest`);
-
-                if (response.ok) {
-                    const latestTournament = await response.json();
-                    if (latestTournament?._id) {
-                        navigate(`/schedule/${latestTournament._id}`);
-                    }
-                }
-            } catch (error) {
-                console.error('Could not fetch the latest schedule:', error);
-            }
-        };
-
-        if (location.pathname === '/') {
-            fetchLatestSchedule();
-        }
-
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [location.pathname]);
-
+    // The useEffect for automatically loading the latest schedule has been removed.
 
     return (
         <div className="App">
