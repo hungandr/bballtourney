@@ -18,16 +18,56 @@ mongoose.connect(process.env.DATABASE_URL)
     .then(() => console.log('MongoDB connected successfully.'))
     .catch(err => console.error('MongoDB connection error:', err));
 
+// --- Schema for Full Tournament Schedules ---
 const tournamentSchema = new mongoose.Schema({
     settings: Object,
     divisions: Array,
     schedule: Object,
     createdAt: { type: Date, default: Date.now }
 });
-
 const Tournament = mongoose.model('Tournament', tournamentSchema);
 
-// GET all saved tournaments (only ID and creation date)
+// --- NEW: Schema for saving the latest division setup ---
+const divisionSetupSchema = new mongoose.Schema({
+    name: { type: String, unique: true }, // A unique key, e.g., "latest_setup"
+    divisions: Array,
+    updatedAt: { type: Date, default: Date.now }
+});
+const DivisionSetup = mongoose.model('DivisionSetup', divisionSetupSchema);
+
+
+// --- API ROUTES ---
+
+// --- NEW: GET the latest division setup ---
+app.get('/api/divisions/setup', async (req, res) => {
+    try {
+        const setup = await DivisionSetup.findOne({ name: 'latest_setup' });
+        if (!setup) {
+            return res.status(404).json({ message: 'No saved division setup found.' });
+        }
+        res.json(setup);
+    } catch (error) {
+        res.status(500).json({ message: 'Server error fetching division setup.' });
+    }
+});
+
+// --- NEW: POST (save/overwrite) the latest division setup ---
+app.post('/api/divisions/setup', async (req, res) => {
+    try {
+        const { divisions } = req.body;
+        const setup = await DivisionSetup.findOneAndUpdate(
+            { name: 'latest_setup' }, // Find the document with this unique name
+            { divisions: divisions, updatedAt: Date.now() }, // Update its data
+            { upsert: true, new: true, setDefaultsOnInsert: true } // Options: upsert creates if not found, new returns the updated doc
+        );
+        res.status(200).json(setup);
+    } catch (error) {
+        res.status(500).json({ message: 'Server error saving division setup.' });
+    }
+});
+
+
+// --- Existing Tournament Routes ---
 app.get('/api/tournaments', async (req, res) => {
     try {
         const tournaments = await Tournament.find({})
@@ -40,7 +80,6 @@ app.get('/api/tournaments', async (req, res) => {
     }
 });
 
-// GET the most recently created tournament
 app.get('/api/tournaments/latest', async (req, res) => {
     try {
         const latestTournament = await Tournament.findOne().sort({ createdAt: -1 });
@@ -54,7 +93,6 @@ app.get('/api/tournaments/latest', async (req, res) => {
     }
 });
 
-// GET a specific tournament by its ID
 app.get('/api/tournaments/:id', async (req, res) => {
     try {
         const tournament = await Tournament.findById(req.params.id);
@@ -67,7 +105,6 @@ app.get('/api/tournaments/:id', async (req, res) => {
     }
 });
 
-// POST a new tournament to save it
 app.post('/api/tournaments', async (req, res) => {
     try {
         const tournamentData = req.body;
@@ -83,16 +120,13 @@ app.post('/api/tournaments', async (req, res) => {
     }
 });
 
-// --- THIS IS THE NEW DELETE ROUTE ---
 app.delete('/api/tournaments/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const deletedTournament = await Tournament.findByIdAndDelete(id);
-
         if (!deletedTournament) {
             return res.status(404).json({ message: 'Tournament not found.' });
         }
-
         res.status(200).json({ message: 'Tournament deleted successfully.' });
     } catch (error) {
         console.error('Error deleting tournament:', error);

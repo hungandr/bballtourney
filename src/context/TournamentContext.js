@@ -1,4 +1,3 @@
-// src/context/TournamentContext.js
 import React, { createContext, useReducer, useContext } from 'react';
 
 const defaultInitialState = {
@@ -7,25 +6,28 @@ const defaultInitialState = {
         "days": 2,
         "gameDuration": 60,
         "minBreak": 60,
-        "maxBreak": 240, // The "maxBreak" property is now back
+        "maxBreak": 240, // This property has been re-added
         "dayTimes": [
             { "day": 1, "startTime": "08:00", "endTime": "20:00" },
             { "day": 2, "startTime": "09:00", "endTime": "20:00" }
         ]
     },
-    "divisions": [
-        { "id": 1751796598272, "name": "men white group 1", "numTeams": 3, "gameType": "Pool Play", "divisionType": "Pool Play", "teamNames": ["", "", ""] },
-        { "id": 1751796611552, "name": "men white group 2", "numTeams": 3, "gameType": "Pool Play", "divisionType": "Pool Play", "teamNames": ["", "", ""] },
-        { "id": 1751796617040, "name": "men grey group 1", "numTeams": 4, "gameType": "Pool Play", "divisionType": "Pool Play", "teamNames": ["", "", "", ""] },
-    ],
+    "divisions": [],
     "schedule": null
 };
+
 
 const tournamentReducer = (state, action) => {
     switch (action.type) {
         case 'SET_FULL_STATE': {
             return { ...action.payload };
         }
+        case 'SET_DIVISIONS':
+            return {
+                ...state,
+                divisions: action.payload,
+                schedule: null,
+            };
         case 'UPDATE_SETTINGS': {
             const newSettings = { ...state.settings, ...action.payload };
             if (action.payload.days !== undefined) {
@@ -47,9 +49,7 @@ const tournamentReducer = (state, action) => {
         case 'ADD_DIVISION': {
             const type = action.payload.type;
             const isBracket = type === 'Championship' || type === 'Consolation';
-            const newDivision = {
-                id: new Date().getTime(), name: '', numTeams: isBracket ? 2 : 4, gameType: 'Pool Play', divisionType: type, teamNames: Array(isBracket ? 2 : 4).fill(''),
-            };
+            const newDivision = { id: new Date().getTime(), name: '', numTeams: isBracket ? 2 : 4, gameType: 'Pool Play', divisionType: type, teamNames: Array(isBracket ? 2 : 4).fill(''), };
             return { ...state, divisions: [...state.divisions, newDivision] };
         }
         case 'UPDATE_DIVISION': {
@@ -90,8 +90,12 @@ const tournamentReducer = (state, action) => {
 };
 
 const TournamentContext = createContext();
+
 export const TournamentProvider = ({ children }) => {
     const [state, dispatch] = useReducer(tournamentReducer, defaultInitialState);
-    return (<TournamentContext.Provider value={{ state, dispatch }}>{children}</TournamentContext.Provider>);
+    return ( <TournamentContext.Provider value={{ state, dispatch }}> {children} </TournamentContext.Provider> );
 };
-export const useTournament = () => useContext(TournamentContext);
+
+export const useTournament = () => {
+    return useContext(TournamentContext);
+};

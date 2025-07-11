@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTournament } from '../context/TournamentContext';
 import { generateFullSchedule } from '../utils/scheduleGenerator';
@@ -9,12 +9,36 @@ const DivisionsSetup = () => {
     const { state, dispatch } = useTournament();
     const navigate = useNavigate();
     const [isSaving, setIsSaving] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const loadDivisions = async () => {
+            try {
+                const response = await fetch(`${API_URL}/api/divisions/setup`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.divisions && data.divisions.length > 0) {
+                        dispatch({ type: 'SET_DIVISIONS', payload: data.divisions });
+                    }
+                }
+            } catch (error) {
+                console.error("Could not load saved division setup:", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        loadDivisions();
+    }, [dispatch]);
+
 
     const handleAddDivision = (type) => {
         dispatch({ type: 'ADD_DIVISION', payload: { type } });
     };
 
-    const handleRemoveDivision = (id) => { dispatch({ type: 'REMOVE_DIVISION', payload: { id } }); };
+    const handleRemoveDivision = (id) => {
+        dispatch({ type: 'REMOVE_DIVISION', payload: { id } });
+    };
 
     const handleDivisionChange = (id, field, value) => {
         const data = field === 'numTeams' ? { [field]: parseInt(value) || 0 } : { [field]: value };
@@ -27,6 +51,18 @@ const DivisionsSetup = () => {
         const newTeamNames = [...division.teamNames];
         newTeamNames[teamIndex] = name;
         dispatch({ type: 'UPDATE_DIVISION', payload: { id: divisionId, data: { teamNames: newTeamNames } } });
+    };
+
+    const saveDivisionSetup = async () => {
+        try {
+            await fetch(`${API_URL}/api/divisions/setup`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ divisions: state.divisions }),
+            });
+        } catch (error) {
+            console.error("Could not save division setup:", error);
+        }
     };
 
     const handleGenerateAndSaveSchedule = async () => {
@@ -56,6 +92,9 @@ const DivisionsSetup = () => {
                 throw new Error(errorData.message || 'Failed to save schedule to server.');
             }
             const savedTournament = await response.json();
+
+            await saveDivisionSetup();
+
             dispatch({ type: 'SET_FULL_STATE', payload: savedTournament });
             navigate(`/schedule/${savedTournament._id}`);
         } catch (error) {
@@ -66,13 +105,16 @@ const DivisionsSetup = () => {
         }
     };
 
+    if (isLoading) {
+        return <div className="page-card"><h2>Loading Division Setup...</h2></div>;
+    }
+
     return (
         <div className="page-card page-card--wide">
             <h2>2. Divisions Setup</h2>
             {state.divisions.map((division, index) => (
                 <div key={division.id} className="page-card" style={{ border: '1px solid #ddd', marginTop: '1rem', padding: '1.5rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                        {/* --- THIS LINE IS UPDATED TO PROVIDE A DEFAULT --- */}
                         <h4>Division #{index + 1}: {division.name || 'Untitled'} ({division.divisionType || 'Pool Play'})</h4>
                         <button className="button-secondary" onClick={() => handleRemoveDivision(division.id)} disabled={isSaving}>
                             Remove Division
