@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import './index.css'; // <--- THIS IS THE CRUCIAL LINE
+import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 import { TournamentProvider } from './context/TournamentContext';
@@ -9,6 +9,7 @@ import { BrowserRouter } from 'react-router-dom';
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
     <React.StrictMode>
+        {/* This is the one and only BrowserRouter your app should have. */}
         <BrowserRouter>
             <TournamentProvider>
                 <App />

@@ -1,39 +1,54 @@
-// src/App.js
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
-import { TournamentProvider } from './context/TournamentContext';
+import React, { useEffect } from 'react';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import Header from './components/Header';
 import TournamentSetup from './pages/TournamentSetup';
 import DivisionsSetup from './pages/DivisionsSetup';
 import ScheduleView from './pages/ScheduleView';
-import './App.css'; // Your main stylesheet
+
+const API_URL = process.env.REACT_APP_API_URL || ''; // Use relative path for unified build
 
 function App() {
-  return (
-      <TournamentProvider>
-        <Router>
-          <div className="app-container">
-            <header className="app-header">
-              <h1>Tournament Scheduler</h1>
-              <nav>
-                <NavLink to="/">1. Setup</NavLink>
-                <NavLink to="/divisions">2. Divisions</NavLink>
-                <NavLink to="/schedule">3. Schedule</NavLink>
-              </nav>
-            </header>
-            <main className="app-main">
-              <Routes>
-                <Route path="/" element={<TournamentSetup />} />
-                <Route path="/divisions" element={<DivisionsSetup />} />
-                {/* Route for when a schedule is generated in-session but not yet saved */}
-                <Route path="/schedule" element={<ScheduleView />} />
-                {/* NEW: Route for viewing a saved, shareable schedule */}
-                <Route path="/schedule/:id" element={<ScheduleView />} />
-              </Routes>
+    const location = useLocation();
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        const fetchLatestSchedule = async () => {
+            try {
+                const response = await fetch(`${API_URL}/api/tournaments/latest`);
+
+                if (response.ok) {
+                    const latestTournament = await response.json();
+                    if (latestTournament?._id) {
+                        navigate(`/schedule/${latestTournament._id}`);
+                    }
+                }
+            } catch (error) {
+                console.error('Could not fetch the latest schedule:', error);
+            }
+        };
+
+        if (location.pathname === '/') {
+            fetchLatestSchedule();
+        }
+
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [location.pathname]);
+
+
+    return (
+        <div className="App">
+            <Header />
+            <main>
+                <Routes>
+                    <Route path="/" element={<TournamentSetup />} />
+                    <Route path="/divisions" element={<DivisionsSetup />} />
+                    <Route path="/schedule" element={<ScheduleView />} />
+                    <Route path="/schedule/:id" element={<ScheduleView />} />
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
             </main>
-          </div>
-        </Router>
-      </TournamentProvider>
-  );
+        </div>
+    );
 }
 
 export default App;

@@ -1,9 +1,9 @@
 // src/pages/DivisionsSetup.js
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react'; // Removed useEffect because it's no longer needed for saving
 import { useNavigate } from 'react-router-dom';
 import { useTournament } from '../context/TournamentContext';
+import { generateFullSchedule } from '../utils/scheduleGenerator'; // Import the generator directly
 
-// The URL of your backend API. Render will provide this.
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
 const DivisionsSetup = () => {
@@ -12,16 +12,13 @@ const DivisionsSetup = () => {
     const [visibleTeamNames, setVisibleTeamNames] = useState({});
     const [isSaving, setIsSaving] = useState(false);
 
-    useEffect(() => { dispatch({ type: 'CLEAR_SCHEDULE' }); }, [dispatch]);
-
+    // This logic is unchanged
     const handleAddDivision = () => { dispatch({ type: 'ADD_DIVISION' }); };
     const handleRemoveDivision = (id) => { dispatch({ type: 'REMOVE_DIVISION', payload: { id } }); };
-
     const handleDivisionChange = (id, field, value) => {
         const data = field === 'numTeams' ? { [field]: parseInt(value) || 0 } : { [field]: value };
         dispatch({ type: 'UPDATE_DIVISION', payload: { id, data } });
     };
-
     const handleTeamNameChange = (divisionId, teamIndex, name) => {
         const division = state.divisions.find(d => d.id === divisionId);
         if (!division) return;
@@ -29,55 +26,62 @@ const DivisionsSetup = () => {
         newTeamNames[teamIndex] = name;
         dispatch({ type: 'UPDATE_DIVISION', payload: { id: divisionId, data: { teamNames: newTeamNames } } });
     };
-
     const toggleTeamNamesVisibility = (divisionId) => {
         setVisibleTeamNames(prev => ({...prev, [divisionId]: !prev[divisionId]}));
     };
 
-    const handleGenerateAndSaveSchedule = () => {
+    // --- THIS IS THE NEW, RELIABLE SAVE FUNCTION ---
+    const handleGenerateAndSaveSchedule = async () => {
         setIsSaving(true);
-        dispatch({ type: 'GENERATE_SCHEDULE' });
-    };
 
-    useEffect(() => {
-        const saveSchedule = async () => {
-            if (state.schedule && !state.schedule.error) {
-                try {
-                    const response = await fetch(`${API_URL}/api/tournaments`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            settings: state.settings,
-                            divisions: state.divisions,
-                            schedule: state.schedule,
-                        }),
-                    });
+        // 1. Generate schedule directly
+        const newSchedule = generateFullSchedule(state);
 
-                    if (!response.ok) {
-                        const errorData = await response.json();
-                        throw new Error(errorData.message || 'Failed to save schedule to server.');
-                    }
+        // 2. Check for generation errors
+        if (newSchedule.error) {
+            dispatch({ type: 'GENERATE_SCHEDULE' }); // Dispatch to set the error state
+            navigate('/schedule'); // Navigate to show the error
+            setIsSaving(false);
+            return;
+        }
 
-                    const savedTournament = await response.json();
-                    navigate(`/schedule/${savedTournament._id}`);
-
-                } catch (error) {
-                    console.error('Save error:', error);
-                    alert(`Could not save the schedule. ${error.message}`);
-                    setIsSaving(false);
-                }
-            } else if (state.schedule && state.schedule.error) {
-                navigate('/schedule');
-                setIsSaving(false);
-            }
+        // 3. Prepare the complete data payload
+        const tournamentData = {
+            settings: state.settings,
+            divisions: state.divisions,
+            schedule: newSchedule,
         };
 
-        if (isSaving) {
-            saveSchedule();
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [state.schedule, isSaving]);
+        // 4. Send the data to the backend to save
+        try {
+            const response = await fetch(`${API_URL}/api/tournaments`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(tournamentData),
+            });
 
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to save schedule to server.');
+            }
+
+            const savedTournament = await response.json();
+
+            // 5. Update the app state with the final, saved data from the server
+            dispatch({ type: 'SET_FULL_STATE', payload: savedTournament });
+
+            // 6. Navigate to the new, unique URL
+            navigate(`/schedule/${savedTournament._id}`);
+
+        } catch (error) {
+            console.error('Save error:', error);
+            alert(`Could not save the schedule. ${error.message}`);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    // The old useEffect for saving is now gone.
 
     return (
         <div className="page-card">

@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTournament } from '../context/TournamentContext';
 import './ScheduleView.css';
 
-// The URL of your backend API.
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
 const ScheduleView = () => {
@@ -42,6 +41,12 @@ const ScheduleView = () => {
             }
         }
     }, [scheduleId, dispatch, state._id, state.schedule]);
+
+    const handleStartOver = () => {
+        // The localStorage line has been removed.
+        dispatch({ type: 'RESET_STATE' });
+        navigate('/');
+    };
 
     const formatTime12Hour = (timeString) => {
         if (!timeString) return '';
@@ -166,7 +171,7 @@ const ScheduleView = () => {
         <div className="page-card error-card">
             <h2>Error Loading Schedule</h2>
             <p>{fetchError}</p>
-            <button onClick={() => navigate('/')}>Start Over</button>
+            <button onClick={handleStartOver}>Start Over</button>
         </div>
     );
 
@@ -174,7 +179,7 @@ const ScheduleView = () => {
         <div className="page-card">
             <h2>Schedule Not Found</h2>
             <p>A schedule has not been generated or loaded.</p>
-            <button onClick={() => navigate('/')}>Start Over</button>
+            <button onClick={handleStartOver}>Start Over</button>
         </div>
     );
 
@@ -197,7 +202,10 @@ const ScheduleView = () => {
     return (
         <div className="page-card">
             <div className="view-header">
-                <h2>Tournament Schedule</h2>
+                <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
+                    <h2>Tournament Schedule</h2>
+                    <button onClick={handleStartOver} className="button-secondary">New Tournament</button>
+                </div>
                 <div className="view-switcher">
                     <button onClick={() => setViewMode('division')} className={viewMode === 'division' ? 'active' : ''}>By Division</button>
                     <button onClick={() => setViewMode('court')} className={viewMode === 'court' ? 'active' : ''}>By Court</button>

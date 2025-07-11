@@ -7,11 +7,9 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 5001;
 
-// --- Middleware ---
 app.use(cors());
 app.use(express.json({ limit: '5mb' }));
 
-// --- Database Connection ---
 if (!process.env.DATABASE_URL) {
     console.error("FATAL ERROR: DATABASE_URL is not defined.");
     process.exit(1);
@@ -20,7 +18,6 @@ mongoose.connect(process.env.DATABASE_URL)
     .then(() => console.log('MongoDB connected successfully.'))
     .catch(err => console.error('MongoDB connection error:', err));
 
-// --- Mongoose Schema ---
 const tournamentSchema = new mongoose.Schema({
     settings: Object,
     divisions: Array,
@@ -30,9 +27,21 @@ const tournamentSchema = new mongoose.Schema({
 
 const Tournament = mongoose.model('Tournament', tournamentSchema);
 
-// --- API ROUTES ---
-// All your API routes must come before the React app serving block.
+// GET the most recently created tournament
+app.get('/api/tournaments/latest', async (req, res) => {
+    try {
+        const latestTournament = await Tournament.findOne().sort({ createdAt: -1 });
+        if (!latestTournament) {
+            return res.status(404).json({ message: 'No schedules found.' });
+        }
+        res.json(latestTournament);
+    } catch (error) {
+        console.error('Error fetching latest tournament:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
 
+// GET a specific tournament by its ID
 app.get('/api/tournaments/:id', async (req, res) => {
     try {
         const tournament = await Tournament.findById(req.params.id);
@@ -45,6 +54,7 @@ app.get('/api/tournaments/:id', async (req, res) => {
     }
 });
 
+// POST a new tournament to save it
 app.post('/api/tournaments', async (req, res) => {
     try {
         const tournamentData = req.body;
@@ -60,16 +70,10 @@ app.post('/api/tournaments', async (req, res) => {
     }
 });
 
-// --- SERVE REACT APP ---
-// This serves the static files from the built React app
 app.use(express.static(path.join(__dirname, 'build')));
-
-// This "catchall" handler serves the main index.html file for any
-// request that doesn't match an API route. This allows React Router to work.
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'build', 'index.html'));
 });
-
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);

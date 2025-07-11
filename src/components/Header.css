@@ -1,0 +1,50 @@
+.app-header {
+    background-color: #0d47a1; /* A deep blue color */
+    padding: 0 2rem; /* Adjusted padding */
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    height: 70px; /* Give the header a fixed height */
+}
+
+.header-title h1 {
+    margin: 0;
+    font-size: 1.5rem;
+}
+
+.header-title-link {
+    color: white;
+    text-decoration: none;
+}
+
+/* --- NEW STYLES FOR THE NAVIGATION STEPS --- */
+
+.nav-steps {
+    display: flex;
+    height: 100%;
+}
+
+.nav-step {
+    display: flex;
+    align-items: center;
+    padding: 0 1.5rem;
+    color: #bbdefb; /* Lighter blue for inactive steps */
+    text-decoration: none;
+    font-weight: 500;
+    border-bottom: 4px solid transparent; /* Placeholder for active indicator */
+    transition: all 0.2s ease-in-out;
+}
+
+.nav-step:hover {
+    background-color: #1565c0; /* Slightly lighter blue on hover */
+    color: white;
+}
+
+/* This is the style for the currently active navigation link */
+.nav-step.active {
+    color: white; /* White text for the active step */
+    background-color: #1976d2; /* A brighter blue background */
+    border-bottom: 4px solid #ffca28; /* Yellow accent line */
+}
