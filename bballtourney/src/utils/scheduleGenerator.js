@@ -1,5 +1,3 @@
-// src/utils/scheduleGenerator.js
-
 // --- Helper Functions ---
 function createTimeSlots(settings) {
     const slots = [];
@@ -95,11 +93,10 @@ export function generateFullSchedule(tournamentState) {
                     const team2 = game.team2;
 
                     // --- HARD CONSTRAINTS ---
-                    if (state.division.gameType === 'Pool Play') {
-                        const team1GamesToday = state.teamGamesOnDay[team1]?.[slot.day] || 0;
-                        const team2GamesToday = state.teamGamesOnDay[team2]?.[slot.day] || 0;
-                        if (team1GamesToday >= 2 || team2GamesToday >= 2) continue;
-                    }
+                    // Max 2 games per day for any team
+                    const team1GamesToday = state.teamGamesOnDay[team1]?.[slot.day] || 0;
+                    const team2GamesToday = state.teamGamesOnDay[team2]?.[slot.day] || 0;
+                    if (team1GamesToday >= 2 || team2GamesToday >= 2) continue;
 
                     const lastGameEnd1 = state.teamLastGameEndTime.get(team1);
                     const lastGameEnd2 = state.teamLastGameEndTime.get(team2);
@@ -112,26 +109,31 @@ export function generateFullSchedule(tournamentState) {
 
         if (candidateGames.length === 0) continue;
 
-        // B. Choose the "best" candidate using priority scoring
+        // B. Choose the "best" candidate using a new priority scoring model for schedule compaction
         candidateGames.forEach(candidate => {
             let score = 0;
             const state = divisionStates.get(candidate.divisionId);
-            const team1 = candidate.game.team1;
-            const team2 = candidate.game.team2;
+            const { team1, team2 } = candidate.game;
 
-            if (state.division.gameType === 'Pool Play' && slot.day === 1) {
-                const team1TotalGames = Object.values(state.teamGamesOnDay[team1] || {}).reduce((a, b) => a + b, 0);
-                const team2TotalGames = Object.values(state.teamGamesOnDay[team2] || {}).reduce((a, b) => a + b, 0);
+            // --- Priority 1: Schedule a team's first game of the tournament to compact the schedule ---
+            const team1TotalGames = Object.values(state.teamGamesOnDay[team1] || {}).reduce((a, b) => a + b, 0);
+            const team2TotalGames = Object.values(state.teamGamesOnDay[team2] || {}).reduce((a, b) => a + b, 0);
+            if (team1TotalGames === 0) score += 10000; // Highest priority to get a team's first game
+            if (team2TotalGames === 0) score += 10000;
 
-                if (team1TotalGames === 0) score += 10000;
-                if (team2TotalGames === 0) score += 10000;
-            }
+            // --- Priority 2: Fulfill the "1 game per day" goal ---
+            const team1GamesToday = state.teamGamesOnDay[team1]?.[slot.day] || 0;
+            const team2GamesToday = state.teamGamesOnDay[team2]?.[slot.day] || 0;
+            if (team1GamesToday === 0) score += 1000; // High priority to meet min 1 game/day
+            if (team2GamesToday === 0) score += 1000;
 
+            // --- Priority 3: Urgency (prioritize teams with more games remaining) ---
             const urgency = state.teamRemainingGames.get(team1) + state.teamRemainingGames.get(team2);
-            score += urgency;
+            score += urgency; // Lower priority, acts as a tie-breaker
 
             candidate.score = score;
         });
+
 
         candidateGames.sort((a, b) => {
             if (b.score !== a.score) return b.score - a.score;

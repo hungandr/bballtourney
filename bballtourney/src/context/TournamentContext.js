@@ -1,10 +1,9 @@
 // src/context/TournamentContext.js
-import React, { createContext, useReducer, useContext, useEffect } from 'react';
-import { generateFullSchedule } from '../utils/scheduleGenerator.js';
+import React, { createContext, useReducer, useContext } from 'react';
+// We will call the generator from the component now, so it's removed from here
+// import { generateFullSchedule } from '../utils/scheduleGenerator.js';
 
-const LOCAL_STORAGE_KEY = 'basketballTournamentState';
-
-// --- NEW: Your complex tournament setup is now the default ---
+// --- Default initial state remains the same ---
 const defaultInitialState = {
     "settings": {
         "courts": 3,
@@ -34,19 +33,13 @@ const defaultInitialState = {
     "schedule": null
 };
 
-const initializer = (initialValue = defaultInitialState) => {
-    try {
-        const storedState = localStorage.getItem(LOCAL_STORAGE_KEY);
-        if (storedState) {
-            const parsedState = JSON.parse(storedState);
-            return { ...parsedState, schedule: null };
-        }
-    } catch (error) { console.error("Failed to parse state from localStorage", error); }
-    return initialValue;
-};
 
 const tournamentReducer = (state, action) => {
     switch (action.type) {
+        // --- NEW ACTION to load a complete state from the server ---
+        case 'SET_FULL_STATE': {
+            return { ...action.payload };
+        }
         case 'UPDATE_SETTINGS': {
             const newSettings = { ...state.settings, ...action.payload };
             if (action.payload.days !== undefined) {
@@ -97,7 +90,10 @@ const tournamentReducer = (state, action) => {
             return { ...state, divisions: state.divisions.filter((div) => div.id !== action.payload.id) };
         }
         case 'GENERATE_SCHEDULE': {
+            // This now just generates the schedule in memory. Saving is a separate step.
             try {
+                // We need to import it here to avoid circular dependency issues at the module level.
+                const { generateFullSchedule } = require('../utils/scheduleGenerator.js');
                 const schedule = generateFullSchedule(state);
                 return { ...state, schedule };
             } catch (e) {
@@ -113,14 +109,14 @@ const tournamentReducer = (state, action) => {
 const TournamentContext = createContext();
 
 export const TournamentProvider = ({ children }) => {
-    const [state, dispatch] = useReducer(tournamentReducer, defaultInitialState, initializer);
-    useEffect(() => {
-        try {
-            const stateToSave = { ...state, schedule: null };
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(stateToSave));
-        } catch (error) { console.error("Failed to save state to localStorage", error); }
-    }, [state]);
-    return ( <TournamentContext.Provider value={{ state, dispatch }}> {children} </TournamentContext.Provider> );
+    // We removed the localStorage initializer and the useEffect hook
+    const [state, dispatch] = useReducer(tournamentReducer, defaultInitialState);
+
+    return (
+        <TournamentContext.Provider value={{ state, dispatch }}>
+            {children}
+        </TournamentContext.Provider>
+    );
 };
 
 export const useTournament = () => {

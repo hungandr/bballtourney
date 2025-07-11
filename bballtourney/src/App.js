@@ -1,32 +1,38 @@
 // src/App.js
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
+import { TournamentProvider } from './context/TournamentContext';
 import TournamentSetup from './pages/TournamentSetup';
 import DivisionsSetup from './pages/DivisionsSetup';
 import ScheduleView from './pages/ScheduleView';
-import './App.css';
+import './App.css'; // Your main stylesheet
 
 function App() {
   return (
-      <Router>
-        <div className="app-container">
-          <header>
-            <h1>Basketball Tournament Organizer</h1>
-            <nav>
-              <Link to="/">Tournament Setup</Link>
-              <Link to="/divisions">Divisions</Link>
-              <Link to="/schedule">Schedule</Link>
-            </nav>
-          </header>
-          <main>
-            <Routes>
-              <Route path="/" element={<TournamentSetup />} />
-              <Route path="/divisions" element={<DivisionsSetup />} />
-              <Route path="/schedule" element={<ScheduleView />} />
-            </Routes>
-          </main>
-        </div>
-      </Router>
+      <TournamentProvider>
+        <Router>
+          <div className="app-container">
+            <header className="app-header">
+              <h1>Tournament Scheduler</h1>
+              <nav>
+                <NavLink to="/">1. Setup</NavLink>
+                <NavLink to="/divisions">2. Divisions</NavLink>
+                <NavLink to="/schedule">3. Schedule</NavLink>
+              </nav>
+            </header>
+            <main className="app-main">
+              <Routes>
+                <Route path="/" element={<TournamentSetup />} />
+                <Route path="/divisions" element={<DivisionsSetup />} />
+                {/* Route for when a schedule is generated in-session but not yet saved */}
+                <Route path="/schedule" element={<ScheduleView />} />
+                {/* NEW: Route for viewing a saved, shareable schedule */}
+                <Route path="/schedule/:id" element={<ScheduleView />} />
+              </Routes>
+            </main>
+          </div>
+        </Router>
+      </TournamentProvider>
   );
 }
 
