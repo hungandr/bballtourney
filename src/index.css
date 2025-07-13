@@ -135,22 +135,42 @@ button:disabled {
   }
 }
 
-/* --- NEW STYLES FOR CHECKBOX GRID LAYOUT --- */
+/* --- STYLES FOR CHECKBOX GRID LAYOUT --- */
 .dependency-grid {
   display: grid;
-  /* Creates responsive columns: as many as can fit that are at least 250px wide */
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   column-gap: 1.5rem;
   row-gap: 0.5rem;
   padding-top: 0.5rem;
 }
-
 .dependency-grid label {
-  /* This aligns the checkbox and its text neatly */
   display: flex;
   align-items: center;
   gap: 0.5rem;
   font-weight: normal;
   cursor: pointer;
-  margin-bottom: 0; /* Override default label margin */
+  margin-bottom: 0;
+}
+
+/* --- NEW STYLES FOR SMALLER FONT ON DIVISIONS PAGE --- */
+.division-setup-page .form-group label,
+.division-setup-page .dependency-grid label,
+.division-setup-page .form-group strong,
+.division-setup-page .form-group p {
+  font-size: 0.875rem; /* Approx 14px */
+}
+
+.division-setup-page .form-group input,
+.division-setup-page button {
+  font-size: 0.9rem; /* Approx 14.4px */
+}
+
+.division-setup-page .form-group input {
+  padding: 8px 10px; /* Slightly reduce padding to match smaller font */
+}
+
+/* Ensure main headers are not affected by the font size change */
+.division-setup-page h2,
+.division-setup-page h4 {
+  font-size: initial; /* Resets to browser/user-agent stylesheet default for headers */
 }

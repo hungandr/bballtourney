@@ -67,8 +67,6 @@ const DivisionsSetup = () => {
 
     const handleGenerateAndSaveSchedule = async () => {
         setIsSaving(true);
-        // --- NEW: Prepare the state before sending to the generator ---
-        // This ensures any visible default names are saved to the state first
         const stateWithDefaults = { ...state };
         stateWithDefaults.divisions = state.divisions.map((div, divIndex) => {
             return {
@@ -91,12 +89,15 @@ const DivisionsSetup = () => {
             setIsSaving(false);
             return;
         }
-        const tournamentData = { ...stateWithDefaults, schedule: newSchedule, };
+
+        const payload = { ...stateWithDefaults, schedule: newSchedule };
+        delete payload._id;
+
         try {
             const response = await fetch(`${API_URL}/api/tournaments`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(tournamentData),
+                body: JSON.stringify(payload),
             });
             if (!response.ok) {
                 const errorData = await response.json();
@@ -115,7 +116,7 @@ const DivisionsSetup = () => {
     if (isLoading) return <div className="page-card"><h2>Loading Division Setup...</h2></div>;
 
     return (
-        <div className="page-card page-card--wide">
+        <div className="page-card page-card--wide division-setup-page"> {/* <-- NEW CLASS ADDED HERE */}
             <h2>2. Divisions Setup</h2>
             {state.divisions.map((division, index) => (
                 <div key={division.id} className="page-card" style={{ border: '1px solid #ddd', marginTop: '1rem', padding: '1.5rem' }}>
@@ -157,7 +158,6 @@ const DivisionsSetup = () => {
                             const divisionDisplayName = division.name.trim() || `Division #${index + 1}`;
                             const teamOrSlot = division.divisionType === 'Pool Play' ? 'Team' : 'Slot';
                             const defaultTeamName = `${divisionDisplayName} ${teamOrSlot} ${teamIndex + 1}`;
-
                             const displayValue = team.name || defaultTeamName;
 
                             return (

@@ -73,7 +73,7 @@ function schedulePoolPlayPhase(poolPlayDivisions, availableSlots, settings) {
             for (const game of state.gamesToSchedule) {
                 const team1GamesToday = state.teamGamesOnDay.get(game.team1)?.[slot.day] || 0;
                 const team2GamesToday = state.teamGamesOnDay.get(game.team2)?.[slot.day] || 0;
-                if (team1GamesToday >= 2 || team2GamesToday >= 2) continue; // Max 2 games per day rule
+                if (team1GamesToday >= 2 || team2GamesToday >= 2) continue;
 
                 const lastGame1 = state.teamLastGameInfo.get(game.team1);
                 const lastGame2 = state.teamLastGameInfo.get(game.team2);
@@ -96,7 +96,7 @@ function schedulePoolPlayPhase(poolPlayDivisions, availableSlots, settings) {
             const state = divisionStates.get(candidate.divisionId);
             const team1GamesToday = state.teamGamesOnDay.get(candidate.game.team1)[slot.day] || 0;
             const team2GamesToday = state.teamGamesOnDay.get(candidate.game.team2)[slot.day] || 0;
-            if (team1GamesToday === 0) score += 1000; // Prioritize teams with 0 games today (for Min 1 game rule)
+            if (team1GamesToday === 0) score += 1000;
             if (team2GamesToday === 0) score += 1000;
             candidate.score = score;
         });
@@ -108,7 +108,7 @@ function schedulePoolPlayPhase(poolPlayDivisions, availableSlots, settings) {
         const state = divisionStates.get(divisionId);
         const team1Obj = state.division.teams[game.team1];
         const team2Obj = state.division.teams[game.team2];
-        const scheduledGame = { id: `game-${Math.random()}`, ...slot, divisionName: state.division.name, gamePhase: game.phase, team1: team1Obj.name.trim() || `Team ${game.team1 + 1}`, team2: team2Obj.name.trim() || `Team ${game.team2 + 1}` };
+        const scheduledGame = { id: `game-${Math.random()}`, ...slot, divisionName: state.division.name, gamePhase: game.phase, team1: team1Obj.name.trim(), team2: team2Obj.name.trim() };
 
         scheduledGames.push(scheduledGame);
         occupiedSlots.add(`${slot.day}-${slot.court}-${slot.time}`);
@@ -146,7 +146,6 @@ function scheduleBracketPhase(bracketDivisions, availableSlots, divisionEndTimes
     for (const division of bracketDivisions) {
         const gamesToSchedule = generateRoundRobinGames(division.teams).map(g => ({ ...g, division, phase: division.divisionType }));
 
-        // Calculate the earliest start time for this entire division based on its dependencies
         let minStartTime = 0;
         if (division.poolPlayDependencies && division.poolPlayDependencies.length > 0) {
             for (const depId of division.poolPlayDependencies) {
@@ -157,10 +156,15 @@ function scheduleBracketPhase(bracketDivisions, availableSlots, divisionEndTimes
                 minStartTime = Math.max(minStartTime, depEndTime);
             }
         }
-        minStartTime += settings.minBreak; // Must have a break after pool play
+
+        // --- THIS IS THE RULE IMPLEMENTATION ---
+        // After finding the latest pool game end time, add the required break.
+        // A bracket game cannot start until this calculated time.
+        minStartTime += settings.minBreak;
 
         const teamLastGameInfo = new Map();
-        division.teams.forEach((_, index) => teamLastGameInfo.set(index, { endTime: minStartTime, day: 0 })); // Initialize with dependency end time
+        // Initialize all teams in the bracket with the same earliest start time.
+        division.teams.forEach((_, index) => teamLastGameInfo.set(index, { endTime: minStartTime, day: 0 }));
 
         divisionStates.set(division.id, { division, teamLastGameInfo, gamesToSchedule });
         totalGamesToSchedule += gamesToSchedule.length;
@@ -174,7 +178,6 @@ function scheduleBracketPhase(bracketDivisions, availableSlots, divisionEndTimes
 
         let candidateGames = [];
         for (const state of divisionStates.values()) {
-            // A bracket division can't start before its own dependencies are met
             const divMinStartTime = state.teamLastGameInfo.get(0).endTime;
             if (slot.absTime < divMinStartTime) continue;
 
@@ -182,12 +185,9 @@ function scheduleBracketPhase(bracketDivisions, availableSlots, divisionEndTimes
                 const lastGame1 = state.teamLastGameInfo.get(game.team1);
                 const lastGame2 = state.teamLastGameInfo.get(game.team2);
 
-                let isEligible = false;
                 if (slot.absTime >= lastGame1.endTime && slot.absTime >= lastGame2.endTime) {
-                    isEligible = true;
+                    candidateGames.push({ game, divisionId: state.division.id });
                 }
-
-                if (isEligible) candidateGames.push({ game, divisionId: state.division.id });
             }
         }
         if (candidateGames.length === 0) continue;
@@ -199,10 +199,11 @@ function scheduleBracketPhase(bracketDivisions, availableSlots, divisionEndTimes
         const state = divisionStates.get(divisionId);
         const team1Obj = state.division.teams[game.team1];
         const team2Obj = state.division.teams[game.team2];
-        const scheduledGame = { id: `game-${Math.random()}`, ...slot, divisionName: state.division.name, gamePhase: game.phase, team1: team1Obj.name.trim() || `Slot ${game.team1 + 1}`, team2: team2Obj.name.trim() || `Slot ${game.team2 + 1}` };
+        const scheduledGame = { id: `game-${Math.random()}`, ...slot, divisionName: state.division.name, gamePhase: game.phase, team1: team1Obj.name.trim(), team2: team2Obj.name.trim() };
 
         scheduledGames.push(scheduledGame);
 
+        // This is the end time for the *next* bracket game for these teams
         const newGameInfo = { endTime: slot.absTime + settings.gameDuration + effectiveMinBreak, day: slot.day };
         state.gamesToSchedule.splice(state.gamesToSchedule.indexOf(game), 1);
         state.teamLastGameInfo.set(game.team1, newGameInfo);
@@ -215,7 +216,6 @@ function scheduleBracketPhase(bracketDivisions, availableSlots, divisionEndTimes
 
     return { scheduledGames, error: null };
 }
-
 
 export function generateFullSchedule(tournamentState) {
     const { settings, divisions } = tournamentState;
@@ -237,7 +237,6 @@ export function generateFullSchedule(tournamentState) {
     const occupiedSlots = poolPlayResult.occupiedSlots;
     const divisionEndTimes = poolPlayResult.divisionEndTimes;
 
-    // Filter out slots that were just used by pool play
     const remainingSlots = allSlots.filter(s => !occupiedSlots.has(`${s.day}-${s.court}-${s.time}`));
 
     // 2. & 3. Schedule all bracket games (Consolation and Championship)
@@ -248,7 +247,6 @@ export function generateFullSchedule(tournamentState) {
     }
     const bracketGames = bracketResult.scheduledGames;
 
-    // Combine all games
     const allScheduledGames = [...poolPlayGames, ...bracketGames];
 
     const totalGamesToSchedule = validDivisions.reduce((sum, div) => {

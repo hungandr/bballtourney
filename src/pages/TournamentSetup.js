@@ -6,7 +6,13 @@ const TournamentSetup = () => {
     const { state, dispatch } = useTournament();
     const navigate = useNavigate();
 
-    useEffect(() => { dispatch({ type: 'CLEAR_SCHEDULE' }); }, [dispatch]);
+    // --- THIS IS THE KEY FIX ---
+    // When the user lands on the first step of creating a tournament,
+    // we reset the entire state to its default values. This ensures
+    // that no _id or other data from a previously loaded tournament persists.
+    useEffect(() => {
+        dispatch({ type: 'RESET_STATE' });
+    }, [dispatch]);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -48,8 +54,6 @@ const TournamentSetup = () => {
             </div>
 
             <div className="form-group"><label htmlFor="minBreak">Minimum Break Between Games (minutes)</label><input type="number" id="minBreak" name="minBreak" value={state.settings.minBreak} onChange={handleInputChange} step="15" min="0"/></div>
-
-            {/* --- THIS INPUT FIELD HAS BEEN RE-ADDED --- */}
             <div className="form-group"><label htmlFor="maxBreak">Maximum Break Between Games (minutes)</label><input type="number" id="maxBreak" name="maxBreak" value={state.settings.maxBreak} onChange={handleInputChange} step="15" min="0"/></div>
 
             <button onClick={goToNextStep}>Next: Set Up Divisions →</button>
