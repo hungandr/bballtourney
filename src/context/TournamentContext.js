@@ -25,8 +25,8 @@ const defaultInitialState = {
         "minBreak": 60,
         "maxBreak": 240,
         "dayTimes": [
-            { "day": 1, "startTime": "08:00", "endTime": "20:00" },
-            { "day": 2, "startTime": "09:00", "endTime": "20:00" }
+            { "day": 1, "startTime": "08:00", "endTime": "19:00" },
+            { "day": 2, "startTime": "08:00", "endTime": "18:00" }
         ]
     },
     "divisions": [],

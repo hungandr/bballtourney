@@ -37,16 +37,16 @@ const TournamentSetup = () => {
             <div className="form-group"><label htmlFor="gameDuration">Time per Game (minutes)</label><input type="number" id="gameDuration" name="gameDuration" value={state.settings.gameDuration} onChange={handleInputChange} step="5" min="10"/></div>
 
             <div style={{ marginTop: '2rem', borderTop: '1px solid #eee', paddingTop: '1rem' }}>
-                <h4>Daily Start & End Times</h4>
+                <h4>First Game & Last Game Start Times</h4>
                 {state.settings.dayTimes && state.settings.dayTimes.map((dayTime, index) => (
                     <div key={index} style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1rem' }}>
                         <strong style={{ minWidth: '60px' }}>Day {index + 1}</strong>
                         <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-                            <label htmlFor={`startTime-${index}`}>Start Time</label>
+                            <label htmlFor={`startTime-${index}`}>First Game Start Time</label>
                             <input type="time" id={`startTime-${index}`} value={dayTime.startTime} onChange={(e) => handleDayTimeChange(index, 'startTime', e.target.value)} />
                         </div>
                         <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-                            <label htmlFor={`endTime-${index}`}>End Time (Last Game Start)</label>
+                            <label htmlFor={`endTime-${index}`}>Last Game Start</label>
                             <input type="time" id={`endTime-${index}`} value={dayTime.endTime} onChange={(e) => handleDayTimeChange(index, 'endTime', e.target.value)} />
                         </div>
                     </div>
