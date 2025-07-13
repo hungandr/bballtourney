@@ -27,7 +27,7 @@ const tournamentSchema = new mongoose.Schema({
 });
 const Tournament = mongoose.model('Tournament', tournamentSchema);
 
-// --- NEW: Schema for saving the latest division setup ---
+// --- Schema for saving the latest division setup ---
 const divisionSetupSchema = new mongoose.Schema({
     name: { type: String, unique: true }, // A unique key, e.g., "latest_setup"
     divisions: Array,
@@ -38,7 +38,7 @@ const DivisionSetup = mongoose.model('DivisionSetup', divisionSetupSchema);
 
 // --- API ROUTES ---
 
-// --- NEW: GET the latest division setup ---
+// --- Division Setup Routes ---
 app.get('/api/divisions/setup', async (req, res) => {
     try {
         const setup = await DivisionSetup.findOne({ name: 'latest_setup' });
@@ -51,14 +51,13 @@ app.get('/api/divisions/setup', async (req, res) => {
     }
 });
 
-// --- NEW: POST (save/overwrite) the latest division setup ---
 app.post('/api/divisions/setup', async (req, res) => {
     try {
         const { divisions } = req.body;
         const setup = await DivisionSetup.findOneAndUpdate(
-            { name: 'latest_setup' }, // Find the document with this unique name
-            { divisions: divisions, updatedAt: Date.now() }, // Update its data
-            { upsert: true, new: true, setDefaultsOnInsert: true } // Options: upsert creates if not found, new returns the updated doc
+            { name: 'latest_setup' },
+            { divisions: divisions, updatedAt: Date.now() },
+            { upsert: true, new: true, setDefaultsOnInsert: true }
         );
         res.status(200).json(setup);
     } catch (error) {
@@ -67,7 +66,7 @@ app.post('/api/divisions/setup', async (req, res) => {
 });
 
 
-// --- Existing Tournament Routes ---
+// --- Tournament Routes ---
 app.get('/api/tournaments', async (req, res) => {
     try {
         const tournaments = await Tournament.find({})
@@ -120,6 +119,35 @@ app.post('/api/tournaments', async (req, res) => {
     }
 });
 
+// --- THIS IS THE NEWLY ADDED ROUTE FOR UPDATING A TOURNAMENT ---
+app.put('/api/tournaments/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { schedule } = req.body; // Expecting an object with a 'schedule' property
+
+        if (!schedule) {
+            return res.status(400).json({ message: 'No schedule data provided for update.' });
+        }
+
+        const tournamentToUpdate = await Tournament.findById(id);
+
+        if (!tournamentToUpdate) {
+            return res.status(404).json({ message: 'Tournament not found.' });
+        }
+
+        // Update only the schedule property of the found document
+        tournamentToUpdate.schedule = schedule;
+
+        const updatedTournament = await tournamentToUpdate.save();
+
+        res.status(200).json(updatedTournament);
+    } catch (error) {
+        console.error('Error updating tournament:', error);
+        res.status(500).json({ message: 'Failed to update tournament on the server.' });
+    }
+});
+// --- END OF NEW ROUTE ---
+
 app.delete('/api/tournaments/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -135,6 +163,7 @@ app.delete('/api/tournaments/:id', async (req, res) => {
 });
 
 
+// --- Serve React App ---
 app.use(express.static(path.join(__dirname, 'build')));
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'build', 'index.html'));

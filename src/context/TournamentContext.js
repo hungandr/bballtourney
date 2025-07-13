@@ -16,7 +16,6 @@ const createNewTeam = (numDays) => ({
     availability: createDefaultAvailability(numDays)
 });
 
-
 const defaultInitialState = {
     "settings": {
         "courts": 3,
@@ -97,7 +96,6 @@ const tournamentReducer = (state, action) => {
                 gameType: 'Pool Play',
                 divisionType: type,
                 teams: Array.from({ length: numTeams }, () => createNewTeam(state.settings.days)),
-                // This is the new property for the UI feature
                 poolPlayDependencies: []
             };
             return { ...state, divisions: [...state.divisions, newDivision] };
@@ -110,6 +108,8 @@ const tournamentReducer = (state, action) => {
                             const newNumTeams = parseInt(action.payload.data.numTeams) || 0;
                             const oldTeams = updatedDivision.teams || [];
                             const newTeams = [];
+                            // --- THIS IS THE FIX ---
+                            // The loop now correctly uses newNumTeams instead of the undefined newNumDays
                             for (let i = 0; i < newNumTeams; i++) {
                                 if (oldTeams[i]) {
                                     newTeams.push(oldTeams[i]);
@@ -151,6 +151,11 @@ const tournamentReducer = (state, action) => {
                 console.error("Error generating schedule:", e);
                 return { ...state, schedule: { error: "A critical error occurred.", games: [] } };
             }
+        }
+        case 'MANUAL_UPDATE_SCHEDULE': {
+            if (!state.schedule) return state;
+            const newSchedule = { ...state.schedule, games: action.payload };
+            return { ...state, schedule: newSchedule };
         }
         case 'CLEAR_SCHEDULE': return { ...state, schedule: null };
         case 'RESET_STATE': return defaultInitialState;
