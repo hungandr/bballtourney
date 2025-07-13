@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useParams, useNavigate, NavLink } from 'react-router-dom';
 import { useTournament } from '../context/TournamentContext';
 import './ScheduleView.css';
@@ -11,7 +11,7 @@ const ScheduleDetail = ({
                             masterScheduleGrid, filteredDetailedData, renderGamesTable, formatTime12Hour,
                             handleDragStart, handleDragOver, handleDrop, warnings,
                             history, handleUndo,
-                            handleSaveChanges, isDirty, isSaving, // New props for saving
+                            handleSaveChanges, isDirty, isSaving, handleDragEnd, // Added handleDragEnd
                         }) => {
 
     if (!scheduleId) return <div className="page-card page-card--wide"><h2>Loading latest schedule...</h2></div>;
@@ -26,7 +26,6 @@ const ScheduleDetail = ({
             <div className="view-header">
                 <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
                     <h2 style={{whiteSpace: 'nowrap'}}>Tournament Schedule</h2>
-                    {/* --- NEW SAVE BUTTON --- */}
                     <button onClick={handleSaveChanges} disabled={!isDirty || isSaving}>
                         {isSaving ? 'Saving...' : 'Save Changes'}
                     </button>
@@ -50,7 +49,7 @@ const ScheduleDetail = ({
 
             {warnings && warnings.length > 0 && ( <div className="schedule-warnings"> <h4>Scheduling Rule Warnings</h4> <ul> {warnings.map((warning, index) => <li key={index}>{warning}</li>)} </ul> </div> )}
             {settings && ( <div className="schedule-summary-box"> <div><p><strong>Courts:</strong> {settings.courts}</p><p><strong>Days:</strong> {settings.days}</p></div> <div> <p><strong>Game Duration:</strong> {settings.gameDuration} mins</p> <p><strong>Min. Break:</strong> {settings.minBreak} mins</p> {settings.maxBreak !== undefined && <p><strong>Max. Break:</strong> {settings.maxBreak} mins</p>} </div> <div><strong>Daily Times:</strong>{settings.dayTimes?.map(dt => (<p key={dt.day}>Day {dt.day}: {formatTime12Hour(dt.startTime)} - {formatTime12Hour(dt.endTime)}</p>))}</div> </div> )}
-            {masterScheduleGrid && Object.keys(masterScheduleGrid).length > 0 && Object.entries(masterScheduleGrid).map(([day, dayData]) => ( <div key={day} className="master-schedule-block"> <h3>{day} - Master Grid</h3> <div className="master-schedule-wrapper"> <table className="master-schedule-table"> <thead><tr><th className="time-header-cell">Time</th>{dayData.courts.map(court => <th key={court}>Court {court}</th>)}</tr></thead> <tbody> {dayData.times.map(time => ( <tr key={time}> <td className="time-header-cell">{formatTime12Hour(time)}</td> {dayData.courts.map(court => { const game = dayData.grid[time]?.[court]; const dayNum = parseInt(day.split(' ')[1]); return ( <td key={court} className={game ? 'game-cell' : 'empty-cell'} onDragOver={handleDragOver} onDrop={handleDrop} data-day={dayNum} data-time={time} data-court={court} > {game ? ( <div draggable onDragStart={(e) => handleDragStart(e, game)}> <span className="game-cell-teams">{game.team1} vs {game.team2}</span> <span className="game-cell-division">{game.divisionName}</span> </div> ) : null} </td> ); })} </tr> ))} </tbody> </table> </div> </div> ))}
+            {masterScheduleGrid && Object.keys(masterScheduleGrid).length > 0 && Object.entries(masterScheduleGrid).map(([day, dayData]) => ( <div key={day} className="master-schedule-block"> <h3>{day} - Master Grid</h3> <div className="master-schedule-wrapper"> <table className="master-schedule-table"> <thead><tr><th className="time-header-cell">Time</th>{dayData.courts.map(court => <th key={court}>Court {court}</th>)}</tr></thead> <tbody> {dayData.times.map(time => ( <tr key={time}> <td className="time-header-cell">{formatTime12Hour(time)}</td> {dayData.courts.map(court => { const game = dayData.grid[time]?.[court]; const dayNum = parseInt(day.split(' ')[1]); return ( <td key={court} className={game ? 'game-cell' : 'empty-cell'} onDragOver={handleDragOver} onDrop={handleDrop} data-day={dayNum} data-time={time} data-court={court} > {game ? ( <div draggable onDragStart={(e) => handleDragStart(e, game)} onDragEnd={handleDragEnd}> {/* <-- Added onDragEnd */} <span className="game-cell-teams">{game.team1} vs {game.team2}</span> <span className="game-cell-division">{game.divisionName}</span> </div> ) : null} </td> ); })} </tr> ))} </tbody> </table> </div> </div> ))}
             <div className="view-header" style={{marginTop: '3rem', borderTop: '2px solid #eee', paddingTop: '2rem'}}> <h3>Detailed Views</h3> <div className="filter-input-wrapper"><input type="text" className="filter-input" placeholder="Filter by team or division..." value={filterText} onChange={(e) => setFilterText(e.target.value)} /></div> <div className="view-switcher"><button onClick={() => setViewMode('division')} className={viewMode === 'division' ? 'active' : ''}>By Division</button><button onClick={() => setViewMode('court')} className={viewMode === 'court' ? 'active' : ''}>By Court</button><button onClick={() => setViewMode('day')} className={viewMode === 'day' ? 'active' : ''}>By Day</button><button onClick={() => setViewMode('team')} className={viewMode === 'team' ? 'active' : ''}>By Team</button></div> </div>
             {filteredDetailedData && Object.keys(filteredDetailedData).length > 0 && Object.entries(filteredDetailedData).map(([groupName, games]) => ( <div key={groupName} className="schedule-grouping-block"><h3>{groupName}</h3>{renderGamesTable(games)}</div> ))}
             {filteredDetailedData && Object.keys(filteredDetailedData).length === 0 && filterText && (<div className="no-results-card"><p>No games match your filter: "{filterText}"</p></div>)}
@@ -71,8 +70,9 @@ const ScheduleView = () => {
     const [filterText, setFilterText] = useState('');
     const [warnings, setWarnings] = useState([]);
     const [history, setHistory] = useState([]);
-    const [isDirty, setIsDirty] = useState(false); // --- NEW: Track if changes have been made
-    const [isSaving, setIsSaving] = useState(false); // --- NEW: Track save operation
+    const [isDirty, setIsDirty] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const draggedOverCellRef = useRef(null); // --- NEW: Ref to manage single highlighted cell
 
     const timeToMinutes = (timeStr) => parseInt(timeStr.split(':')[0]) * 60 + parseInt(timeStr.split(':')[1]);
     const formatTime12Hour = (timeString) => { if (!timeString) return ''; const [hourString, minute] = timeString.split(':'); let hour = parseInt(hourString, 10); const period = hour >= 12 ? 'PM' : 'AM'; hour = hour % 12 || 12; return `${hour}:${minute} ${period}`; };
@@ -84,54 +84,35 @@ const ScheduleView = () => {
     useEffect(() => { const fetchTournament = async (id) => { setIsLoading(true); setFetchError(null); setFilterText(''); setHistory([]); setIsDirty(false); try { const response = await fetch(`${API_URL}/api/tournaments/${id}`); if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.message || 'Could not fetch schedule data.'); } const data = await response.json(); dispatch({ type: 'SET_FULL_STATE', payload: data }); } catch (err) { console.error("Fetch error:", err); setFetchError(err.message); } finally { setIsLoading(false); } }; if (scheduleId) { fetchTournament(scheduleId); } else { dispatch({ type: 'CLEAR_SCHEDULE' }); } }, [scheduleId, dispatch]);
     useEffect(() => { if (!schedule || !schedule.games || !settings || !divisions) { setWarnings([]); return; } const newWarnings = []; const gamesPerDay = {}; const teamLastGameEnd = {}; const sortedGames = [...schedule.games].sort((a, b) => a.absTime - b.absTime); for (const game of sortedGames) { const teams = [game.team1, game.team2]; for (const team of teams) { if (!gamesPerDay[team]) gamesPerDay[team] = {}; gamesPerDay[team][game.day] = (gamesPerDay[team][game.day] || 0) + 1; if (gamesPerDay[team][game.day] > 2) { newWarnings.push(`Team "${team}" has more than 2 games on Day ${game.day}.`); } if (teamLastGameEnd[team] && teamLastGameEnd[team].day === game.day) { const breakTime = game.absTime - teamLastGameEnd[team].endTime; if (breakTime < settings.minBreak) { newWarnings.push(`Team "${team}" has insufficient break time (${breakTime} mins) before their game at ${formatTime12Hour(game.time)} on Day ${game.day}.`); } if (breakTime > settings.maxBreak) { newWarnings.push(`Team "${team}" has excessive break time (${breakTime} mins) before their game at ${formatTime12Hour(game.time)} on Day ${game.day}.`); } } teamLastGameEnd[team] = { endTime: game.absTime + settings.gameDuration, day: game.day }; } } setWarnings([...new Set(newWarnings)]); }, [schedule, settings, divisions]);
 
-    const addChangeToHistory = (description, gamesBeforeChange) => {
-        setHistory(prev => [...prev, { description, previousGames: gamesBeforeChange }]);
-        setIsDirty(true);
-    };
-
-    const handleUndo = (indexToUndo) => {
-        const historyItem = history[indexToUndo];
-        addChangeToHistory(`Undo: "${historyItem.description}"`, schedule.games); // Log the undo action itself
-        dispatch({ type: 'MANUAL_UPDATE_SCHEDULE', payload: historyItem.previousGames });
-        setHistory(prev => prev.slice(0, indexToUndo));
-    };
-
-    // --- NEW: SAVE FUNCTION ---
-    const handleSaveChanges = async () => {
-        if (!scheduleId || !state.schedule) return;
-        setIsSaving(true);
-        try {
-            // We only need to send the schedule part to be updated
-            const payload = { schedule: state.schedule };
-
-            const response = await fetch(`${API_URL}/api/tournaments/${scheduleId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Failed to save changes.');
-            }
-
-            alert('Schedule changes saved successfully!');
-            setIsDirty(false); // Reset dirty state after successful save
-            setHistory([]); // Clear the local history log
-        } catch (error) {
-            console.error('Save error:', error);
-            alert(`Could not save changes: ${error.message}`);
-        } finally {
-            setIsSaving(false);
-        }
-    };
+    const addChangeToHistory = (description, gamesBeforeChange) => { setHistory(prev => [...prev, { description, previousGames: gamesBeforeChange }]); setIsDirty(true); };
+    const handleUndo = (indexToUndo) => { const historyItem = history[indexToUndo]; addChangeToHistory(`Undo: "${historyItem.description}"`, schedule.games); dispatch({ type: 'MANUAL_UPDATE_SCHEDULE', payload: historyItem.previousGames }); setHistory(prev => prev.slice(0, indexToUndo)); };
+    const handleSaveChanges = async () => { if (!scheduleId || !state.schedule) return; setIsSaving(true); try { const payload = { schedule: state.schedule }; const response = await fetch(`${API_URL}/api/tournaments/${scheduleId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), }); if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.message || 'Failed to save changes.'); } alert('Schedule changes saved successfully!'); setIsDirty(false); setHistory([]); } catch (error) { console.error('Save error:', error); alert(`Could not save changes: ${error.message}`); } finally { setIsSaving(false); } };
 
     const handleDragStart = (e, game) => { e.dataTransfer.setData('application/json', JSON.stringify(game)); e.currentTarget.parentElement.classList.add('dragging'); };
-    const handleDragOver = (e) => { e.preventDefault(); e.currentTarget.classList.add('drag-over'); };
+
+    // --- UPDATED: More precise highlighting logic ---
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        const targetCell = e.currentTarget;
+        if (draggedOverCellRef.current === targetCell) return;
+        if (draggedOverCellRef.current) {
+            draggedOverCellRef.current.classList.remove('drag-over');
+        }
+        targetCell.classList.add('drag-over');
+        draggedOverCellRef.current = targetCell;
+    };
+
+    // --- NEW: Robust cleanup handler ---
+    const handleDragEnd = () => {
+        if (draggedOverCellRef.current) {
+            draggedOverCellRef.current.classList.remove('drag-over');
+            draggedOverCellRef.current = null;
+        }
+        document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
+    };
+
     const handleDrop = (e) => {
         e.preventDefault();
-        document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
-        document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
         const draggedGame = JSON.parse(e.dataTransfer.getData('application/json'));
         const { day, time, court } = e.currentTarget.dataset;
         const targetDay = parseInt(day);
@@ -145,6 +126,7 @@ const ScheduleView = () => {
             return game;
         });
         dispatch({ type: 'MANUAL_UPDATE_SCHEDULE', payload: newGames });
+        handleDragEnd(); // Clean up visuals immediately after drop
     };
 
     const masterScheduleGrid = useMemo(() => { if (!schedule?.games || !settings || !Array.isArray(settings.dayTimes)) return {}; const gridData = {}; const gameMap = new Map(); schedule.games.forEach(g => { if(!gameMap.has(g.day)) gameMap.set(g.day, new Map()); if(!gameMap.get(g.day).has(g.time)) gameMap.get(g.day).set(g.time, new Map()); gameMap.get(g.day).get(g.time).set(g.court, g); }); for (let day = 1; day <= settings.days; day++) { const dayGames = schedule.games.filter(g => g.day === day); if (dayGames.length === 0) continue; const timeSlots = [...new Set(schedule.games.map(g => g.time))].sort(); const courts = [...Array(settings.courts).keys()].map(i => i + 1); const grid = {}; timeSlots.forEach(time => { grid[time] = {}; courts.forEach(court => { grid[time][court] = gameMap.get(day)?.get(time)?.get(court) || null; }); }); gridData[`Day ${day}`] = { times: timeSlots, courts, grid }; } return gridData; }, [schedule, settings]);
@@ -173,6 +155,7 @@ const ScheduleView = () => {
                     warnings={warnings}
                     history={history} handleUndo={handleUndo}
                     handleSaveChanges={handleSaveChanges} isDirty={isDirty} isSaving={isSaving}
+                    handleDragEnd={handleDragEnd}
                 />
             </section>
         </div>
