@@ -7,7 +7,6 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background-color: #f4f7f6;
   color: #333;
-  /* --- THIS IS NEW: Pushes content down to make space for the sticky header --- */
   padding-top: 70px;
 }
 
@@ -20,7 +19,7 @@ code {
 .page-card {
   background-color: white;
   max-width: 900px;
-  margin: 1rem auto; /* Reduced top margin */
+  margin: 1rem auto;
   padding: 2rem;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
@@ -114,4 +113,44 @@ button:disabled {
   .schedule-table td::before { content: attr(data-label); float: left; font-weight: bold; text-align: left; }
   .schedule-table td.empty-slot-text { text-align: center; padding: 1rem 0; }
   .schedule-table td.empty-slot-text::before { display: none; }
+}
+
+/* --- STYLES FOR DIVISIONS PAGE TEAM LAYOUT --- */
+.team-setup-row {
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+}
+.team-setup-row .form-group:first-child {
+  flex: 1;
+  max-width: 400px;
+}
+.team-setup-row .form-group:last-child {
+  flex: 2;
+}
+@media (max-width: 800px) {
+  .team-setup-row {
+    flex-direction: column;
+    gap: 1rem;
+  }
+}
+
+/* --- NEW STYLES FOR CHECKBOX GRID LAYOUT --- */
+.dependency-grid {
+  display: grid;
+  /* Creates responsive columns: as many as can fit that are at least 250px wide */
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  column-gap: 1.5rem;
+  row-gap: 0.5rem;
+  padding-top: 0.5rem;
+}
+
+.dependency-grid label {
+  /* This aligns the checkbox and its text neatly */
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: normal;
+  cursor: pointer;
+  margin-bottom: 0; /* Override default label margin */
 }
